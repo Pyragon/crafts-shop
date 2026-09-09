@@ -273,6 +273,9 @@ each one is the kind of thing that is invisible until it costs money.
       be done first, because this is the moment strangers can reach it.
 - [ ] Verify the sitemap and `robots.txt` allow indexing (the gate sends
       `noindex` on every page while locked).
+- [ ] Confirm `NEXT_PUBLIC_SITE_URL` is the public URL **before** running
+      `next build` — it is inlined at build time, and a stale value silently
+      publishes canonical tags and email links pointing at localhost.
 - [ ] Submit the sitemap in Google Search Console.
 
 ---
