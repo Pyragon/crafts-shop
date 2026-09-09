@@ -7,7 +7,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[?]` needs a decision 
 
 ---
 
-## Phase 0 — Foundation & base website  ← CURRENT
+## Phase 0 — Foundation & base website  ✅ COMPLETE
 
 - [x] Install Node.js LTS (v24.20.0, to `~/.local/lib/node`, no sudo needed)
 - [x] Scaffold Next.js 16 + React 19 + TypeScript + Tailwind v4 (App Router, `src/`)
@@ -18,11 +18,11 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[?]` needs a decision 
 - [x] Footer with nav, contact, newsletter placeholder
 - [x] Homepage: hero, featured products, blog teaser, about strip
 - [~] Mobile-first responsive pass (360px → 1440px+) — built mobile-first, awaiting real-device check
-- [~] Dev server reachable from phone — needs the one-time sysctl below (see "Remote testing" below)
+- [x] Dev server reachable from phone — running on `0.0.0.0:80`
 - [x] Placeholder pages for every nav route + custom 404 (so nothing dead-ends)
-- [~] `git init` done, files staged — first commit left for Cody to make
+- [x] `git init`, first commit, pushed to Pyragon/crafts-shop (SSH auth set up)
 
-## Phase 1 — Product catalog
+## Phase 1 — Product catalog  ← NEXT
 
 - [ ] Choose DB + ORM — planning on **Prisma + SQLite** for dev, Postgres for prod
 - [ ] Schema: `Product`, `Category`, `ProductImage`, `ProductVariant`
@@ -154,8 +154,8 @@ Useful addresses for this machine:
 | Tailscale        | `100.77.38.45`       |
 | Public / phone   | forwarded port 80    |
 
-- [ ] Run the sysctl command above
-- [ ] `npm run dev` bound to `0.0.0.0:80`, confirmed loading on Cody's phone
+- [x] Run the sysctl command above
+- [~] `npm run dev:public` bound to `0.0.0.0:80` and serving — awaiting Cody's phone check
 
 ---
 
