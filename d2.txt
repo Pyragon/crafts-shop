@@ -1,0 +1,7 @@
+HTTP/2 301 
+alt-svc: h3=":443"; ma=2592000
+location: https://mabrowns.ca/shop/mug
+server: Caddy
+content-length: 0
+date: Wed, 09 Sep 2026 03:35:04 GMT
+

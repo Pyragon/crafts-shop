@@ -53,16 +53,14 @@ http://mabrowns.ca, http://www.mabrowns.ca {
 # split ranking signals and backlinks between them. A 301 consolidates all of
 # that onto mabrowns.ca. {uri} preserves the path, so a deep link still lands
 # in the right place.
-# TODO: uncomment once mabrown-ca.pem exists (Origin CA cert for mabrown.ca),
-# then `caddy reload --config deploy/Caddyfile` — reload is zero-downtime.
-#https://mabrown.ca, https://www.mabrown.ca {
-#	tls /home/cody/.config/mabrowns-tls/mabrown-ca.pem /home/cody/.config/mabrowns-tls/mabrown-ca.key
-#	redir https://mabrowns.ca{uri} permanent
-#}
-#
-#http://mabrown.ca, http://www.mabrown.ca {
-#	redir https://mabrowns.ca{uri} permanent
-#}
+https://mabrown.ca, https://www.mabrown.ca {
+	tls /home/cody/.config/mabrowns-tls/mabrown-ca.pem /home/cody/.config/mabrowns-tls/mabrown-ca.key
+	redir https://mabrowns.ca{uri} permanent
+}
+
+http://mabrown.ca, http://www.mabrown.ca {
+	redir https://mabrowns.ca{uri} permanent
+}
 
 # --- direct IP access (LAN, Tailscale) ------------------------------------
 # Catch-all for port 80; the host-specific blocks above take precedence.

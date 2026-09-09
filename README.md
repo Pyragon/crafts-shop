@@ -78,8 +78,11 @@ downtime (the admin API listens on localhost:2019).
 
 ### Public access
 
-The site is served through Cloudflare at **https://mabrowns.ca**, with port 80
-forwarded from the router to this machine. Cloudflare terminates TLS at its
+The site is served through Cloudflare at **https://mabrowns.ca**, with ports
+80 and 443 forwarded from the router to this machine. **mabrown.ca** is a
+typo-catching domain that 301s to the canonical one, preserving the path.
+Each domain has its own Cloudflare Origin CA certificate; Caddy picks the
+right one by SNI. Cloudflare terminates TLS at its
 edge; the hop from Cloudflare to here is still plain HTTP, so the SSL/TLS mode
 is Flexible. **That has to become Full (strict), with a certificate on the
 origin, before the shop takes a single real payment.**
