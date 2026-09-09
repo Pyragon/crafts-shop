@@ -23,12 +23,14 @@ export default async function SearchPage({
           <label htmlFor="q" className="sr-only">
             Search products
           </label>
-          {/* Laid out as a flex row rather than an absolutely positioned icon
-              over a padded input. `type="search"` carries native styling that
-              browsers — iOS Safari especially — apply on their own terms,
-              overriding padding and imposing their own metrics, which leaves an
-              overlaid icon sitting in the wrong place. Flex sidesteps it, and
-              appearance-none strips the native chrome. */}
+          {/* Flex row rather than an icon absolutely positioned over a padded
+              input. The overlaid version rendered wrong on a real device
+              (Brave/Android) while measuring perfectly in headless Chromium,
+              and the cause was never pinned down — a Cloudflare caching fix
+              landed at the same time, so either could have been to blame.
+              This version doesn't depend on the answer: no overlay to
+              misplace, no padding for native `type="search"` styling to
+              override, and appearance-none strips the native chrome. */}
           <div className="flex flex-1 items-center gap-3 rounded-full border border-line-strong bg-paper-raised px-4 focus-within:border-clay">
             <SearchIcon className="shrink-0 text-ink-faint" />
             <input
