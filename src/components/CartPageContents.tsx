@@ -182,19 +182,15 @@ export function CartPageContents() {
             </span>
           </div>
 
-          {/* Checkout arrives in Phase 4. Disabled rather than hidden so the
-              layout doesn't move when it becomes real. */}
-          <button
-            type="button"
-            disabled
-            aria-disabled
-            title="Checkout arrives in a later phase"
-            className="mt-6 w-full rounded-full bg-line-strong px-6 py-3.5 text-sm font-medium text-ink-faint"
+          <Link
+            href="/checkout"
+            className="mt-6 flex w-full items-center justify-center gap-2 rounded-full bg-clay px-6 py-3.5 text-sm font-medium text-white transition-colors hover:bg-clay-dark"
           >
             Checkout
-          </button>
+            <ArrowIcon width={16} height={16} />
+          </Link>
           <p className="mt-2 text-center text-xs text-ink-faint">
-            Payments are not wired up yet.
+            No account needed.
           </p>
         </div>
       </aside>

@@ -116,6 +116,14 @@ export default function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // Everything except Next's own assets and static files.
-  matcher: ["/((?!_next/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|woff2?)$).*)"],
+  // Everything except Next's own assets, static files, and the Stripe webhook.
+  //
+  // The webhook must stay reachable while the shop is gated: Stripe is not a
+  // browser, cannot hold a preview cookie, and its address is not in the
+  // allowlist — gating it would silently swallow payment confirmations. It is
+  // safe to exempt because it authenticates itself by signature, which is a
+  // stronger check than the gate performs.
+  matcher: [
+    "/((?!_next/|api/stripe/|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|txt|xml|woff2?)$).*)",
+  ],
 };

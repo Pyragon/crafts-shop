@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireUser } from "@/lib/require-auth";
+import { getOrdersForUser } from "@/lib/orders";
+import { formatPrice } from "@/lib/format";
 import { ArrowIcon } from "@/components/icons";
 
 export const metadata: Metadata = {
@@ -9,12 +11,10 @@ export const metadata: Metadata = {
 };
 
 export default async function OrdersPage() {
-  await requireUser("/account/orders");
-
-  // Orders arrive with checkout in Phase 4. The page exists now so the account
-  // area is navigable and the empty state is the one people will actually see
-  // first — most accounts have no orders on day one.
-  const orders: { id: string; number: string }[] = [];
+  const user = await requireUser("/account/orders");
+  // Pending orders are hidden: an abandoned payment attempt is not something a
+  // customer should see listed as an order.
+  const orders = await getOrdersForUser(user.id);
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:py-16">
@@ -43,7 +43,59 @@ export default async function OrdersPage() {
             <ArrowIcon width={16} height={16} />
           </Link>
         </div>
-      ) : null}
+      ) : (
+        <ul className="mt-10 space-y-4">
+          {orders.map((order) => (
+            <li
+              key={order.id}
+              className="rounded-2xl border border-line bg-paper-raised p-6"
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-3">
+                <div>
+                  <p className="font-display text-lg text-ink">{order.number}</p>
+                  <p className="mt-0.5 text-xs text-ink-faint">
+                    {order.createdAt.toLocaleDateString("en-CA", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="tabular-nums text-ink">
+                    {formatPrice(order.totalCents)}
+                  </p>
+                  <p className="mt-0.5 text-xs capitalize text-sage">
+                    {order.status.toLowerCase()}
+                  </p>
+                </div>
+              </div>
+
+              <ul className="mt-4 space-y-1 border-t border-line pt-4 text-sm text-ink-soft">
+                {order.items.map((item) => (
+                  <li key={item.id}>
+                    {item.quantity} × {item.productName}
+                    {item.variantLabel && (
+                      <span className="text-ink-faint"> — {item.variantLabel}</span>
+                    )}
+                    {item.personalisation.map((p) => (
+                      <span key={p.id} className="block pl-4 text-xs text-clay">
+                        {p.label}: {p.value}
+                      </span>
+                    ))}
+                  </li>
+                ))}
+              </ul>
+
+              {order.trackingNumber && (
+                <p className="mt-4 text-sm text-ink-soft">
+                  Tracking: <span className="text-ink">{order.trackingNumber}</span>
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

@@ -128,7 +128,8 @@ model ProductVariant {
   imageId String?
   image   ProductImage? @relation(fields: [imageId], references: [id], onDelete: SetNull)
 
-  cartItems CartItem[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -275,6 +276,7 @@ model User {
   tokens    VerificationToken[]
   addresses Address[]
   carts     Cart[]
+  orders    Order[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -352,4 +354,107 @@ model RateLimit {
   resetAt DateTime
 
   @@index([resetAt])
+}
+
+enum OrderStatus {
+  /// Payment intent created, money not taken yet.
+  PENDING
+  PAID
+  FULFILLED
+  CANCELLED
+  REFUNDED
+}
+
+/// An order snapshots everything it needs.
+///
+/// Nothing here is a live reference to the catalogue, because an order is a
+/// record of what someone actually bought at a moment in time. Renaming a
+/// product, changing its price, or deleting a variant must never rewrite
+/// history — least of all a personalisation the customer paid to have made.
+model Order {
+  id     String @id @default(cuid())
+  /// Human-facing, e.g. MB-2026-0007. Shown to customers; never the raw id.
+  number String @unique
+
+  /// Null for guest checkout — an order does not require an account.
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// Always captured, account or not. This is where the receipt goes.
+  email  String
+
+  status OrderStatus @default(PENDING)
+
+  subtotalCents Int
+  shippingCents Int    @default(0)
+  taxCents      Int    @default(0)
+  totalCents    Int
+  currency      String @default("cad")
+
+  /// Address snapshot rather than a relation: saved addresses get edited and
+  /// deleted, and a shipped order must still say where it went.
+  shipName       String
+  shipLine1      String
+  shipLine2      String?
+  shipCity       String
+  shipRegion     String?
+  shipPostalCode String
+  shipCountry    String  @default("CA")
+  shipPhone      String?
+
+  shippingMethod String?
+
+  stripePaymentIntentId String?   @unique
+  paidAt                DateTime?
+  fulfilledAt           DateTime?
+  trackingNumber        String?
+  /// Anything the maker needs to remember about this one.
+  notes                 String?
+
+  items OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status, createdAt])
+  @@index([email])
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  /// Kept for reporting, but nullable and SetNull: deleting a product must not
+  /// delete the record of someone having bought it.
+  variantId String?
+  variant   ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+
+  /// Snapshots.
+  productName  String
+  productSlug  String
+  variantLabel String  @default("")
+  sku          String?
+
+  unitPriceCents Int
+  quantity       Int
+  lineTotalCents Int
+
+  personalisation OrderItemPersonalisation[]
+
+  @@index([orderId])
+  @@index([variantId])
+}
+
+/// The personalisation as it was ordered. Label is copied too, so renaming the
+/// field later cannot change what an old order says the customer asked for.
+model OrderItemPersonalisation {
+  id          String    @id @default(cuid())
+  orderItemId String
+  orderItem   OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+
+  label String
+  value String
+
+  @@index([orderItemId])
 }

@@ -136,6 +136,83 @@ export async function sendEmailVerification(
   });
 }
 
+type OrderForEmail = {
+  number: string;
+  email: string;
+  totalCents: number;
+  subtotalCents: number;
+  shippingCents: number;
+  shipName: string;
+  shipLine1: string;
+  shipLine2: string | null;
+  shipCity: string;
+  shipRegion: string | null;
+  shipPostalCode: string;
+  shipCountry: string;
+  shippingMethod: string | null;
+  items: {
+    productName: string;
+    variantLabel: string;
+    quantity: number;
+    lineTotalCents: number;
+    personalisation: { label: string; value: string }[];
+  }[];
+};
+
+function money(cents: number): string {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+/**
+ * The receipt.
+ *
+ * Sent from the webhook, so it goes out even if the customer closed the tab
+ * the moment they paid. Includes the personalisation exactly as ordered —
+ * it is the customer's only written record of what they asked to have made.
+ */
+export async function sendOrderConfirmation(
+  order: OrderForEmail,
+): Promise<DeliveryResult> {
+  const lines = order.items.flatMap((item) => {
+    const name = item.variantLabel
+      ? `${item.productName} (${item.variantLabel})`
+      : item.productName;
+    return [
+      `  ${item.quantity} x ${name}  —  ${money(item.lineTotalCents)}`,
+      ...item.personalisation.map((p) => `      ${p.label}: ${p.value}`),
+    ];
+  });
+
+  return deliver({
+    to: order.email,
+    subject: `Order ${order.number} — thank you`,
+    body: [
+      `Thank you — your order is confirmed.`,
+      "",
+      `Order number: ${order.number}`,
+      "",
+      "What's coming:",
+      ...lines,
+      "",
+      `Subtotal:  ${money(order.subtotalCents)}`,
+      `Shipping:  ${order.shippingCents === 0 ? "Free" : money(order.shippingCents)}`,
+      `Total:     ${money(order.totalCents)}`,
+      "",
+      "Sending to:",
+      `  ${order.shipName}`,
+      `  ${order.shipLine1}`,
+      ...(order.shipLine2 ? [`  ${order.shipLine2}`] : []),
+      `  ${order.shipCity}${order.shipRegion ? `, ${order.shipRegion}` : ""} ${order.shipPostalCode}`,
+      `  ${order.shipCountry}`,
+      "",
+      "Everything is made by hand in small batches, so allow a little time",
+      "before it ships. You'll hear from us when it's on its way.",
+      "",
+      `— ${site.name}`,
+    ].join("\n"),
+  });
+}
+
 /** Used by the setup check below and anything that wants to report status. */
 export function emailProvider(): "resend" | "console" {
   return process.env.RESEND_API_KEY ? "resend" : "console";
