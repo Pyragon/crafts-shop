@@ -7,7 +7,9 @@ Built with **Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4**.
 Pages render on the server, so crawlers get complete HTML — React here does
 not cost us SEO.
 
-See [`TODO.md`](./TODO.md) for the phased roadmap and open decisions.
+See [`TODO.md`](./TODO.md) for the phased roadmap and open decisions, and
+[`SECURITY.md`](./SECURITY.md) for why the security-relevant parts are built
+the way they are.
 
 ## Requirements
 
@@ -191,7 +193,8 @@ standard library, so there is no native dependency to compile.
 
 - Session and reset tokens are stored hashed; the cookie holds the raw value
 - Sign-out deletes the session row, so it takes effect immediately
-- 8 failed sign-ins lock an account for 15 minutes
+- 5 failed sign-ins lock an account for 15 minutes
+- Email verification is sent on signup but never blocks anything
 - `requireUser()` guards pages; the proxy is deliberately not involved
 
 **Email is not wired up.** Every message prints to the server console with its

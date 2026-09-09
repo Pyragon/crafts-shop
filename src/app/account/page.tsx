@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/require-auth";
 import { db } from "@/lib/db";
 import { LogoutButton, ProfileForm } from "@/components/AccountForms";
+import { VerifyBanner } from "@/components/VerifyBanner";
 import { ArrowIcon } from "@/components/icons";
 
 export const metadata: Metadata = {
@@ -41,6 +42,8 @@ export default async function AccountPage() {
         </div>
         <LogoutButton />
       </header>
+
+      {!user.emailVerified && <VerifyBanner email={user.email} />}
 
       <ul className="mt-10 grid gap-4 sm:grid-cols-2">
         {cards.map((card) => (

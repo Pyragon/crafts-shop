@@ -6,10 +6,11 @@ import type { Role, TokenType } from "@prisma/client";
 import { db } from "./db";
 import { fakeVerify, hashPassword, verifyPassword } from "./password";
 import { mergeCartIntoUser } from "./cart";
+import { sendEmailVerification } from "./email";
 
 export const SESSION_COOKIE = "mbc-session";
 const SESSION_DAYS = 30;
-const MAX_FAILED_ATTEMPTS = 8;
+const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 const TOKEN_TTL_HOURS = { EMAIL_VERIFICATION: 48, PASSWORD_RESET: 1 };
 
@@ -153,11 +154,38 @@ export async function registerUser(
       name: name?.trim() || null,
       passwordHash: await hashPassword(password),
     },
-    select: { id: true },
+    select: { id: true, email: true, name: true },
   });
 
+  await sendVerificationEmail(user.id, user.email, user.name);
+
+  // Signed in immediately, unverified. Verification never blocks buying:
+  // checkout also allows guests, so turning away a registered-but-unverified
+  // customer while waving strangers through would be incoherent.
   await mergeCartIntoUser(user.id);
   await createSession(user.id);
+  return { ok: true };
+}
+
+export async function sendVerificationEmail(
+  userId: string,
+  email: string,
+  name: string | null,
+): Promise<void> {
+  const token = await issueToken(userId, "EMAIL_VERIFICATION");
+  await sendEmailVerification(email, name, token);
+}
+
+export async function verifyEmail(
+  token: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const consumed = await consumeToken(token, "EMAIL_VERIFICATION");
+  if (!consumed.ok) return { ok: false, error: consumed.error };
+
+  await db.user.update({
+    where: { id: consumed.userId },
+    data: { emailVerifiedAt: new Date() },
+  });
   return { ok: true };
 }
 

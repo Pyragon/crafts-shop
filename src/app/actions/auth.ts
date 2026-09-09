@@ -10,6 +10,7 @@ import {
   loginUser,
   registerUser,
   resetPassword,
+  sendVerificationEmail,
 } from "@/lib/auth";
 import { sendPasswordResetEmail } from "@/lib/email";
 
@@ -113,4 +114,16 @@ export async function updateProfileAction(
 
   revalidatePath("/account");
   return { notice: "Saved." };
+}
+
+export async function resendVerificationAction(
+  _prev: FormState,
+  _formData: FormData,
+): Promise<FormState> {
+  const user = await getCurrentUser();
+  if (!user) return { error: "You need to be signed in." };
+  if (user.emailVerified) return { notice: "That address is already confirmed." };
+
+  await sendVerificationEmail(user.id, user.email, user.name);
+  return { notice: "Sent — check your email. The link is good for 48 hours." };
 }

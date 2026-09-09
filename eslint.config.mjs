@@ -15,4 +15,16 @@ const eslintConfig = defineConfig([
   ]),
 ]);
 
+eslintConfig.push({
+  rules: {
+    // A leading underscore already means "deliberately unused" throughout this
+    // codebase — required, for instance, by useActionState's (prevState,
+    // formData) signature when an action needs neither.
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      { argsIgnorePattern: "^_", varsIgnorePattern: "^_", caughtErrors: "none" },
+    ],
+  },
+});
+
 export default eslintConfig;

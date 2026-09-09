@@ -124,7 +124,8 @@ Still to add in Phase 7's admin UI:
 - [x] Password reset — full flow, tokens stored hashed, single use, 1h expiry
 - [~] Email delivery stubbed: messages print to the server console with their
       link, so flows are testable. `[?]` provider still open (Resend? SMTP?)
-- [ ] Email verification — model and mail written, not yet enforced anywhere
+- [x] Email verification — sent on signup, `/verify-email`, resend button,
+      banner on the account page. Deliberately non-blocking
 - [x] `/account` dashboard
 - [x] `/account/orders` — empty state; real orders arrive with Phase 4
 - [ ] `/account/orders/[id]` order detail — waiting on orders existing
@@ -146,8 +147,8 @@ Still to add in Phase 7's admin UI:
 
 ### Known gaps
 
-- [ ] Email verification is not enforced — nothing yet depends on a verified
-      address, so it can wait for the provider decision
+- Verification is intentionally not a barrier: it never blocks buying, and
+  unverified accounts are never deleted. Reasoning in `SECURITY.md`
 - [ ] Rate limiting is per account, not per IP. One attacker spraying many
       accounts is not slowed down. Worth adding before launch.
 
@@ -266,7 +267,7 @@ Useful addresses for this machine:
 |---|----------|--------|
 | 1 | Real shop name — **MaBrown's Creations** | done |
 | 2 | Payment provider — Stripe assumed | open |
-| 3 | Email provider for receipts & password resets | open |
+| 3 | Email provider for receipts & password resets — flows all work against a console stub | open |
 | 4 | Blog authoring: MDX in repo vs. admin editor | open |
 | 5 | Image hosting for product photos | open |
 | 6 | Domains — **mabrowns.ca** (canonical) + **mabrown.ca** (301s to it) | done |
