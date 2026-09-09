@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { ProductStatus } from "@prisma/client";
 import { db } from "./db";
+import { variantLabel, variantPrice } from "./variants";
 
 /**
  * Cart persistence.
@@ -21,9 +22,11 @@ const CART_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
 export type CartLine = {
   id: string;
-  productId: string;
+  variantId: string;
   slug: string;
   name: string;
+  /** "Oatmeal / Large", or "" when the product has no options. */
+  variantLabel: string;
   blurb: string;
   unitPriceCents: number;
   quantity: number;
@@ -48,27 +51,30 @@ export const EMPTY_CART: CartSummary = {
 
 const cartInclude = {
   items: {
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "asc" as const },
     include: {
-      product: {
-        select: {
-          id: true,
-          slug: true,
-          name: true,
-          blurb: true,
-          priceCents: true,
-          stock: true,
-          status: true,
-          images: {
-            orderBy: { position: "asc" },
-            take: 1,
-            select: { url: true, alt: true },
+      variant: {
+        include: {
+          product: {
+            select: {
+              id: true,
+              slug: true,
+              name: true,
+              blurb: true,
+              priceCents: true,
+              status: true,
+              images: {
+                orderBy: { position: "asc" as const },
+                take: 1,
+                select: { url: true, alt: true },
+              },
+            },
           },
         },
       },
     },
   },
-} as const;
+};
 
 /** Reads the cart token without creating anything. */
 export async function getCartToken(): Promise<string | undefined> {
@@ -96,15 +102,22 @@ export async function getCart(): Promise<CartSummary> {
 type RawItem = {
   id: string;
   quantity: number;
-  product: {
+  variant: {
     id: string;
-    slug: string;
-    name: string;
-    blurb: string;
-    priceCents: number;
+    option1: string | null;
+    option2: string | null;
+    option3: string | null;
+    priceCents: number | null;
     stock: number;
-    status: ProductStatus;
-    images: { url: string; alt: string }[];
+    product: {
+      id: string;
+      slug: string;
+      name: string;
+      blurb: string;
+      priceCents: number;
+      status: ProductStatus;
+      images: { url: string; alt: string }[];
+    };
   };
 };
 
@@ -112,19 +125,23 @@ function summarise(items: RawItem[]): CartSummary {
   const lines: CartLine[] = items
     // A product unpublished after it was added should drop out rather than
     // being purchasable through a stale cart.
-    .filter((item) => item.product.status === ProductStatus.PUBLISHED)
-    .map((item) => ({
-      id: item.id,
-      productId: item.product.id,
-      slug: item.product.slug,
-      name: item.product.name,
-      blurb: item.product.blurb,
-      unitPriceCents: item.product.priceCents,
-      quantity: item.quantity,
-      stock: item.product.stock,
-      lineTotalCents: item.product.priceCents * item.quantity,
-      image: item.product.images[0] ?? null,
-    }));
+    .filter((item) => item.variant.product.status === ProductStatus.PUBLISHED)
+    .map((item) => {
+      const unit = variantPrice(item.variant, item.variant.product.priceCents);
+      return {
+        id: item.id,
+        variantId: item.variant.id,
+        slug: item.variant.product.slug,
+        name: item.variant.product.name,
+        variantLabel: variantLabel(item.variant),
+        blurb: item.variant.product.blurb,
+        unitPriceCents: unit,
+        quantity: item.quantity,
+        stock: item.variant.stock,
+        lineTotalCents: unit * item.quantity,
+        image: item.variant.product.images[0] ?? null,
+      };
+    });
 
   return {
     lines,
@@ -169,35 +186,48 @@ async function currentSummary(cartId: string): Promise<CartSummary> {
 }
 
 export async function addToCart(
-  productId: string,
+  variantId: string,
   quantity = 1,
 ): Promise<CartMutationResult> {
-  const product = await db.product.findFirst({
-    where: { id: productId, status: ProductStatus.PUBLISHED },
-    select: { id: true, stock: true, name: true },
+  const variant = await db.productVariant.findFirst({
+    where: { id: variantId, product: { status: ProductStatus.PUBLISHED } },
+    select: {
+      id: true,
+      stock: true,
+      option1: true,
+      option2: true,
+      option3: true,
+      priceCents: true,
+      product: { select: { name: true } },
+    },
   });
-  if (!product) {
-    return { ok: false, error: "That product is no longer available.", cart: await getCart() };
+  if (!variant) {
+    return { ok: false, error: "That option is no longer available.", cart: await getCart() };
   }
+
+  const label = variantLabel(variant);
+  const name = label
+    ? `${variant.product.name} (${label})`
+    : variant.product.name;
 
   const cart = await getOrCreateCart();
   const existing = await db.cartItem.findUnique({
-    where: { cartId_productId: { cartId: cart.id, productId } },
+    where: { cartId_variantId: { cartId: cart.id, variantId } },
     select: { quantity: true },
   });
 
   const wanted = (existing?.quantity ?? 0) + Math.max(1, quantity);
 
-  if (product.stock <= 0) {
-    return { ok: false, error: `${product.name} is sold out.`, cart: await currentSummary(cart.id) };
+  if (variant.stock <= 0) {
+    return { ok: false, error: `${name} is sold out.`, cart: await currentSummary(cart.id) };
   }
   // Clamp rather than reject, so adding one too many still does the useful
   // thing instead of losing the click.
-  const capped = Math.min(wanted, product.stock);
+  const capped = Math.min(wanted, variant.stock);
 
   await db.cartItem.upsert({
-    where: { cartId_productId: { cartId: cart.id, productId } },
-    create: { cartId: cart.id, productId, quantity: capped },
+    where: { cartId_variantId: { cartId: cart.id, variantId } },
+    create: { cartId: cart.id, variantId, quantity: capped },
     update: { quantity: capped },
   });
 
@@ -205,7 +235,7 @@ export async function addToCart(
   if (capped < wanted) {
     return {
       ok: false,
-      error: `Only ${product.stock} of ${product.name} left — the cart holds that many.`,
+      error: `Only ${variant.stock} of ${name} left — the cart holds that many.`,
       cart: summary,
     };
   }
@@ -222,7 +252,20 @@ export async function updateCartItem(
   // Scope the lookup by cookie token so one cart can't edit another's rows.
   const item = await db.cartItem.findFirst({
     where: { id: itemId, cart: { token } },
-    select: { id: true, cartId: true, product: { select: { stock: true, name: true } } },
+    select: {
+      id: true,
+      cartId: true,
+      variant: {
+        select: {
+          stock: true,
+          option1: true,
+          option2: true,
+          option3: true,
+          priceCents: true,
+          product: { select: { name: true } },
+        },
+      },
+    },
   });
   if (!item) return { ok: false, error: "That item is no longer in your cart.", cart: await getCart() };
 
@@ -231,14 +274,18 @@ export async function updateCartItem(
     return { ok: true, cart: await currentSummary(item.cartId) };
   }
 
-  const capped = Math.min(quantity, item.product.stock);
+  const capped = Math.min(quantity, item.variant.stock);
   await db.cartItem.update({ where: { id: item.id }, data: { quantity: capped } });
 
   const summary = await currentSummary(item.cartId);
   if (capped < quantity) {
+    const label = variantLabel(item.variant);
+    const name = label
+      ? `${item.variant.product.name} (${label})`
+      : item.variant.product.name;
     return {
       ok: false,
-      error: `Only ${item.product.stock} of ${item.product.name} left.`,
+      error: `Only ${item.variant.stock} of ${name} left.`,
       cart: summary,
     };
   }
@@ -270,7 +317,7 @@ export async function mergeCartIntoUser(userId: string): Promise<void> {
 
   const anon = await db.cart.findUnique({
     where: { token },
-    include: { items: { include: { product: { select: { stock: true } } } } },
+    include: { items: { include: { variant: { select: { stock: true } } } } },
   });
   if (!anon || anon.userId === userId) return;
 
@@ -280,17 +327,17 @@ export async function mergeCartIntoUser(userId: string): Promise<void> {
 
   for (const item of anon.items) {
     const existing = await db.cartItem.findUnique({
-      where: { cartId_productId: { cartId: userCart.id, productId: item.productId } },
+      where: { cartId_variantId: { cartId: userCart.id, variantId: item.variantId } },
       select: { quantity: true },
     });
     const merged = Math.min(
       (existing?.quantity ?? 0) + item.quantity,
-      item.product.stock,
+      item.variant.stock,
     );
     if (merged <= 0) continue;
     await db.cartItem.upsert({
-      where: { cartId_productId: { cartId: userCart.id, productId: item.productId } },
-      create: { cartId: userCart.id, productId: item.productId, quantity: merged },
+      where: { cartId_variantId: { cartId: userCart.id, variantId: item.variantId } },
+      create: { cartId: userCart.id, variantId: item.variantId, quantity: merged },
       update: { quantity: merged },
     });
   }

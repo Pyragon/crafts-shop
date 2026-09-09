@@ -33,7 +33,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[?]` needs a decision 
 ## Phase 1 — Product catalog  ✅ COMPLETE
 
 - [x] DB + ORM — **Prisma 7 + SQLite** (pinned to 7.10.0; `latest` on npm is an RC)
-- [x] Schema: `Product`, `Category`, `ProductImage` — variants deliberately deferred, see note
+- [x] Schema: `Product`, `Category`, `ProductImage`, `ProductOption`, `ProductVariant`
 - [x] Seed script — 4 categories, 12 published products, 1 draft kept as a guard
 - [x] `/shop` listing: grid, category filter, sort, pagination (8/page)
 - [x] `/shop/[slug]` detail: gallery, price, sale/stock states, related products
@@ -41,12 +41,23 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[?]` needs a decision 
 - [x] Product search at `/search` (noindex — thin, duplicated content)
 - [x] Empty / sold-out / not-found states; out-of-range pages 404 rather than soft-404
 
-### Note: product variants
+### Product variants  ✅ DONE
 
-Deferred on purpose. Variants (size/colour) complicate the cart and checkout
-considerably, and for one-off handmade pieces most products have none. Stock
-lives on `Product`. If variants are wanted later it is a migration plus cart
-changes, so it is worth deciding before Phase 4 rather than after.
+Decided and built. Colour, logo/design and size are all **variants of one
+product**, not separate products — separate listings for near-identical items
+split ranking signals between pages that then compete with each other.
+
+- Up to three option axes per product (`Colour` × `Size` × …), values stored
+  denormalised on the variant as `option1/2/3`
+- Every product has at least one variant even with no options, so stock, price
+  and SKU always live in exactly one place and the cart always points at a
+  variant — no second code path
+- Per-variant stock, optional per-variant price override and SKU
+- Optional per-variant image, ready for uploads in Phase 7
+- Admin "add variant" is a row insert; option axes are their own rows
+
+Still to add in Phase 7's admin UI: generating the variant grid from chosen
+option values, and bulk stock editing.
 
 ### Carried into Phase 6 (SEO)
 
@@ -61,7 +72,8 @@ changes, so it is worth deciding before Phase 4 rather than after.
 - [x] Header cart badge with live item count
 - [x] Subtotal + free-shipping threshold; shipping/tax deferred to checkout
 - [~] `mergeCartIntoUser()` written and ready — called from sign-in in Phase 3
-- [x] Stock validation server-side (clamps, never trusts the client)
+- [x] Stock validation server-side, per variant (clamps, never trusts the client)
+- [x] Cart lines are per variant — two glazes of one mug are two lines
 
 ### Known limits
 

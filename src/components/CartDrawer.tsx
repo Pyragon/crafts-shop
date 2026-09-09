@@ -141,6 +141,11 @@ export function CartDrawer() {
                       >
                         {line.name}
                       </Link>
+                      {line.variantLabel && (
+                        <p className="mt-0.5 text-xs text-ink-faint">
+                          {line.variantLabel}
+                        </p>
+                      )}
                       <p className="mt-0.5 text-sm text-ink-soft">
                         {formatPrice(line.unitPriceCents)}
                       </p>

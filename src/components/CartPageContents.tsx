@@ -87,7 +87,12 @@ export function CartPageContents() {
                     </p>
                   </div>
 
-                  <p className="mt-1 line-clamp-2 text-sm text-ink-soft">
+                  {line.variantLabel && (
+                    <p className="mt-1 text-sm text-ink-soft">
+                      {line.variantLabel}
+                    </p>
+                  )}
+                  <p className="mt-1 line-clamp-2 text-sm text-ink-faint">
                     {line.blurb}
                   </p>
                   <p className="mt-1 text-sm text-ink-faint">

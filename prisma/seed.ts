@@ -33,6 +33,18 @@ const categories = [
   },
 ];
 
+/** One axis of variation, e.g. { name: "Colour", values: ["Indigo", "Madder"] }. */
+type SeedOption = { name: string; values: string[] };
+
+/** Stock (and optional price bump) for one combination of option values. */
+type SeedVariant = {
+  options: string[];
+  stock: number;
+  /// Absolute price for this variant; omitted means the product's base price.
+  priceCents?: number;
+  sku?: string;
+};
+
 type SeedProduct = {
   slug: string;
   name: string;
@@ -41,7 +53,10 @@ type SeedProduct = {
   priceCents: number;
   compareAtCents?: number;
   sku: string;
-  stock: number;
+  /// Stock when the product has no options — becomes its single default variant.
+  stock?: number;
+  options?: SeedOption[];
+  variants?: SeedVariant[];
   category: string;
   featured?: boolean;
   status?: ProductStatus;
@@ -58,8 +73,17 @@ const products: SeedProduct[] = [
       "A generous everyday mug, thrown in stoneware and finished with a speckled oatmeal glaze that pools a little where the wall meets the base. Holds around 350ml. The handle is pulled by hand, so no two sit exactly alike. Dishwasher and microwave safe, though it will thank you for a gentler life.",
     priceCents: 3200,
     sku: "CER-MUG-01",
-    stock: 12,
     category: "ceramics",
+    options: [
+      { name: "Glaze", values: ["Oatmeal", "Ash"] },
+      { name: "Size", values: ["Standard", "Large"] },
+    ],
+    variants: [
+      { options: ["Oatmeal", "Standard"], stock: 5, sku: "CER-MUG-01-OS" },
+      { options: ["Oatmeal", "Large"], stock: 3, priceCents: 3800, sku: "CER-MUG-01-OL" },
+      { options: ["Ash", "Standard"], stock: 4, sku: "CER-MUG-01-AS" },
+      { options: ["Ash", "Large"], stock: 0, priceCents: 3800, sku: "CER-MUG-01-AL" },
+    ],
     featured: true,
     published: 6,
   },
@@ -96,8 +120,12 @@ const products: SeedProduct[] = [
       "Four heavyweight linen napkins, dipped in a natural indigo vat kept alive in the studio. Colour varies across the set — that is the point. Softens considerably after the first wash. Wash cold and separately for the first few cycles; indigo continues to give up a little colour for a while.",
     priceCents: 4800,
     sku: "TEX-NAP-04",
-    stock: 6,
     category: "textiles",
+    options: [{ name: "Set size", values: ["Set of 2", "Set of 4"] }],
+    variants: [
+      { options: ["Set of 2"], stock: 4, priceCents: 2800, sku: "TEX-NAP-02" },
+      { options: ["Set of 4"], stock: 6, sku: "TEX-NAP-04S" },
+    ],
     featured: true,
     published: 3,
   },
@@ -109,8 +137,13 @@ const products: SeedProduct[] = [
       "A generous cotton tea towel, hand printed with a lino block cut in the studio. The registration wanders by a millimetre or two across the run, which is how you know a person did it. Pre-washed, so it will not shrink on you.",
     priceCents: 2600,
     sku: "TEX-TWL-01",
-    stock: 15,
     category: "textiles",
+    options: [{ name: "Design", values: ["Fern", "Wheat", "Thistle"] }],
+    variants: [
+      { options: ["Fern"], stock: 6, sku: "TEX-TWL-01-FRN" },
+      { options: ["Wheat"], stock: 5, sku: "TEX-TWL-01-WHT" },
+      { options: ["Thistle"], stock: 0, sku: "TEX-TWL-01-THS" },
+    ],
     published: 55,
   },
   {
@@ -231,7 +264,7 @@ async function main() {
 
   for (const p of products) {
     const status = p.status ?? ProductStatus.PUBLISHED;
-    await db.product.create({
+    const created = await db.product.create({
       data: {
         slug: p.slug,
         name: p.name,
@@ -240,7 +273,6 @@ async function main() {
         priceCents: p.priceCents,
         compareAtCents: p.compareAtCents ?? null,
         sku: p.sku,
-        stock: p.stock,
         status,
         featured: p.featured ?? false,
         publishedAt:
@@ -248,17 +280,45 @@ async function main() {
             ? daysAgo(p.published ?? 30)
             : null,
         categoryId: categoryIds.get(p.category)!,
+        options: {
+          create: (p.options ?? []).map((o, i) => ({
+            name: o.name,
+            position: i,
+          })),
+        },
       },
+    });
+
+    // Every product gets at least one variant, even with no options — that
+    // uniformity keeps stock in exactly one place and spares the storefront a
+    // second code path for "products without variants".
+    const variants: SeedVariant[] =
+      p.variants ?? [{ options: [], stock: p.stock ?? 0, sku: undefined }];
+
+    await db.productVariant.createMany({
+      data: variants.map((v, i) => ({
+        productId: created.id,
+        option1: v.options[0] ?? null,
+        option2: v.options[1] ?? null,
+        option3: v.options[2] ?? null,
+        priceCents: v.priceCents ?? null,
+        stock: v.stock,
+        sku: v.sku ?? null,
+        position: i,
+      })),
     });
   }
 
-  const [cats, all, live] = await Promise.all([
+  const [cats, all, live, variants, withOptions] = await Promise.all([
     db.category.count(),
     db.product.count(),
     db.product.count({ where: { status: ProductStatus.PUBLISHED } }),
+    db.productVariant.count(),
+    db.product.count({ where: { options: { some: {} } } }),
   ]);
   console.log(
-    `Seeded ${cats} categories, ${all} products (${live} published, ${all - live} draft).`,
+    `Seeded ${cats} categories, ${all} products (${live} published, ${all - live} draft), ` +
+      `${variants} variants across them, ${withOptions} with option axes.`,
   );
 }
 

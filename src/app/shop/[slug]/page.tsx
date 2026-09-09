@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductCard, ProductThumb } from "@/components/ProductCard";
-import { AddToCartButton } from "@/components/AddToCartButton";
+import { VariantPicker } from "@/components/VariantPicker";
 import {
   getAllProductSlugs,
   getProductBySlug,
   getRelatedProducts,
   isNew,
+  productPriceRange,
+  productStock,
 } from "@/lib/catalog";
 import { formatPrice } from "@/lib/format";
 
@@ -46,10 +48,9 @@ export default async function ProductPage({
   if (!product) notFound();
 
   const related = await getRelatedProducts(product);
-  const soldOut = product.stock === 0;
-  const onSale =
-    product.compareAtCents !== null &&
-    product.compareAtCents > product.priceCents;
+  const soldOut = productStock(product) === 0;
+  const { min } = productPriceRange(product);
+  const onSale = product.compareAtCents !== null && product.compareAtCents > min;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:py-14">
@@ -123,32 +124,22 @@ export default async function ProductPage({
             {product.blurb}
           </p>
 
-          <div className="mt-7 flex items-baseline gap-3">
-            <span className="font-display text-3xl text-ink">
-              {formatPrice(product.priceCents)}
-            </span>
-            {onSale && (
-              <span className="text-base text-ink-faint line-through">
+          {onSale && (
+            <p className="mt-5 text-sm text-ink-faint">
+              Was{" "}
+              <span className="line-through">
                 {formatPrice(product.compareAtCents!)}
               </span>
-            )}
-          </div>
+            </p>
+          )}
 
-          <p className="mt-3 text-sm">
-            {soldOut ? (
-              <span className="text-ink-faint">
-                Sold out — the next firing is usually a few weeks away.
-              </span>
-            ) : product.stock <= 3 ? (
-              <span className="text-clay">
-                Only {product.stock} left in this batch
-              </span>
-            ) : (
-              <span className="text-sage">In stock, ready to ship</span>
-            )}
-          </p>
-
-          <AddToCartButton productId={product.id} soldOut={soldOut} />
+          {/* Price, stock and add-to-cart all live in the picker, because all
+              three depend on which variant is selected. */}
+          <VariantPicker
+            options={product.options}
+            variants={product.variants}
+            basePriceCents={product.priceCents}
+          />
           <p className="mt-2 text-xs text-ink-faint">
             Checkout arrives in a later phase; for now this fills the cart.
           </p>

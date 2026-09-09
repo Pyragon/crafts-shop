@@ -1,6 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
-import { isNew, type CatalogProduct } from "@/lib/catalog";
+import {
+  isNew,
+  productPriceRange,
+  productStock,
+  type CatalogProduct,
+} from "@/lib/catalog";
 import { swatchFor } from "@/lib/swatch";
 import { formatPrice } from "@/lib/format";
 
@@ -48,10 +53,12 @@ export function ProductThumb({
 }
 
 export function ProductCard({ product }: { product: CatalogProduct }) {
-  const soldOut = product.stock === 0;
+  const stock = productStock(product);
+  const soldOut = stock === 0;
+  const { min, max } = productPriceRange(product);
   const onSale =
-    product.compareAtCents !== null &&
-    product.compareAtCents > product.priceCents;
+    product.compareAtCents !== null && product.compareAtCents > min;
+  const hasChoice = product.options.length > 0;
 
   return (
     <article className="group">
@@ -83,21 +90,25 @@ export function ProductCard({ product }: { product: CatalogProduct }) {
           <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-ink-soft">
             {product.blurb}
           </p>
-          <p className="mt-2 flex items-baseline gap-2 text-sm">
+          <p className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
             <span className={soldOut ? "text-ink-faint" : "text-ink"}>
-              {formatPrice(product.priceCents)}
+              {min === max ? formatPrice(min) : `From ${formatPrice(min)}`}
             </span>
             {onSale && (
               <span className="text-xs text-ink-faint line-through">
                 {formatPrice(product.compareAtCents!)}
               </span>
             )}
-            {product.stock > 0 && product.stock <= 3 && (
-              <span className="text-xs text-clay">
-                Only {product.stock} left
-              </span>
+            {!soldOut && stock <= 3 && (
+              <span className="text-xs text-clay">Only {stock} left</span>
             )}
           </p>
+
+          {hasChoice && (
+            <p className="mt-1 text-xs text-ink-faint">
+              {product.options.map((o) => o.name).join(" · ")}
+            </p>
+          )}
         </div>
       </Link>
     </article>

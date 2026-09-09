@@ -199,6 +199,7 @@ src/
     db.ts            Prisma client singleton (server-only)
     catalog.ts       catalogue queries (always filtered to PUBLISHED)
     cart.ts          cart persistence; stock is enforced here, not client-side
+    variants.ts      option/variant helpers — dependency-free, safe for clients
     swatch.ts        placeholder colours — dependency-free, safe for clients
     ip-allowlist.ts  CIDR matching for the gate
     format.ts        price/date formatting
@@ -221,6 +222,10 @@ tags, header, footer and (later) emails.
   module-not-found. `db.ts` imports `server-only` so this fails loudly and
   names the real cause. Shared pure helpers belong in their own module — see
   `swatch.ts`.
+- **Every product has at least one variant**, even with no options. Stock,
+  price overrides and SKUs live on the variant; the cart always references a
+  variant id. That uniformity is deliberate — it removes the "does this product
+  have variants?" branch from every code path.
 - **The cart is server-authoritative.** The client sends an id and a desired
   quantity; the server decides what happens against live stock, clamping
   rather than trusting.

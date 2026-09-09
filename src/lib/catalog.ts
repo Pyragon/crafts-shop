@@ -1,5 +1,6 @@
 import { Prisma, ProductStatus } from "@prisma/client";
 import { db } from "./db";
+import { priceRange, totalStock } from "./variants";
 
 /**
  * Read side of the catalogue.
@@ -20,7 +21,6 @@ const productSelect = {
   description: true,
   priceCents: true,
   compareAtCents: true,
-  stock: true,
   featured: true,
   publishedAt: true,
   category: { select: { slug: true, name: true } },
@@ -28,11 +28,37 @@ const productSelect = {
     orderBy: { position: "asc" },
     select: { url: true, alt: true, width: true, height: true },
   },
+  options: {
+    orderBy: { position: "asc" },
+    select: { name: true, position: true },
+  },
+  variants: {
+    orderBy: { position: "asc" },
+    select: {
+      id: true,
+      option1: true,
+      option2: true,
+      option3: true,
+      priceCents: true,
+      stock: true,
+      sku: true,
+    },
+  },
 } satisfies Prisma.ProductSelect;
 
 export type CatalogProduct = Prisma.ProductGetPayload<{
   select: typeof productSelect;
 }>;
+
+/** Total stock across every variant — a product is sold out when this is 0. */
+export function productStock(product: CatalogProduct): number {
+  return totalStock(product.variants);
+}
+
+/** Cheapest and dearest variant price, for "from $x" on cards. */
+export function productPriceRange(product: CatalogProduct) {
+  return priceRange(product.variants, product.priceCents);
+}
 
 export const SORTS = {
   newest: "Newest",
