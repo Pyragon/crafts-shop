@@ -163,7 +163,10 @@ Useful addresses for this machine:
 | Public / phone   | forwarded port 80    |
 
 - [x] Run the sysctl command above
-- [~] `npm run dev:public` bound to `0.0.0.0:80` and serving — awaiting Cody's phone check
+- [x] `npm run dev:public` bound to `0.0.0.0:80` and serving
+- [x] Public access via Cloudflare at https://mabrowns.ca (port 80 forwarded)
+- [ ] Switch Cloudflare SSL to Full (strict) with an origin cert — **required before payments**
+- [ ] Serve `next build && next start` instead of `next dev` before launch
 
 ---
 
@@ -176,5 +179,5 @@ Useful addresses for this machine:
 | 3 | Email provider for receipts & password resets | open |
 | 4 | Blog authoring: MDX in repo vs. admin editor | open |
 | 5 | Image hosting for product photos | open |
-| 6 | Domain name — going through Cloudflare, origin `24.108.198.130` | in progress |
+| 6 | Domain name — **mabrowns.ca**, live via Cloudflare | done |
 | 7 | Analytics provider | open |

@@ -47,6 +47,23 @@ npm run dev -- --hostname 0.0.0.0 --port 3000
 | LAN       | `http://10.0.0.103:3000`   |
 | Tailscale | `http://100.77.38.45:3000` |
 
+### Public access
+
+The site is served through Cloudflare at **https://mabrowns.ca**, with port 80
+forwarded from the router to this machine. Cloudflare terminates TLS at its
+edge; the hop from Cloudflare to here is still plain HTTP, so the SSL/TLS mode
+is Flexible. **That has to become Full (strict), with a certificate on the
+origin, before the shop takes a single real payment.**
+
+Any hostname the dev server is reached on must be listed in
+`SITE_DEV_ORIGINS` (`.env.local`, comma separated) — otherwise Next blocks the
+HMR websocket cross-origin, the dev bootstrap stalls, and the page renders but
+never becomes interactive.
+
+> Gotcha: `next.config.ts` reads that variable once at startup. Editing
+> `.env.local` alone does not re-evaluate it — `touch next.config.ts` (or
+> restart) after changing the list, or the old value silently stays in effect.
+
 ### Serving on port 80
 
 Port 80 is forwarded to this machine, but Linux blocks unprivileged processes
