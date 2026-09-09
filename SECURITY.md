@@ -217,7 +217,9 @@ visible From address is still on the apex.
 | `v=DMARC1; p=none; rua=…` | `_dmarc` | monitoring |
 
 DMARC is at `p=none` deliberately — monitor first. Tighten to `quarantine`
-then `reject` once the reports show only legitimate sources.
+then `reject` once the reports show only legitimate sources. **This is on the
+launch checklist in `TODO.md`**; `p=none` instructs receivers to do nothing, so
+leaving it there at launch means DMARC is published but not enforced.
 
 The API key is scoped to **sending only**; it cannot read or manage domains.
 

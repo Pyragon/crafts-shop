@@ -220,6 +220,63 @@ Still to add in Phase 7's admin UI:
 
 ---
 
+---
+
+## 🚀 Launch checklist
+
+Everything that must happen **before the shop is open to real customers**.
+Collected here because these were accumulating scattered across phases, and
+each one is the kind of thing that is invisible until it costs money.
+
+### Email
+
+- [ ] **Tighten DMARC.** It is at `p=none`, which only monitors — receivers are
+      told nothing about what to do with mail that fails. Before launch, read
+      the reports, confirm the only senders are Resend and Cloudflare, then move
+      to `p=quarantine` and later `p=reject`.
+      Record: `_dmarc` → `v=DMARC1; p=none; rua=mailto:admin@mabrowns.ca`
+      Cloudflare **DMARC Management** (free, needs Cloudflare DNS) charts these
+      reports instead of mailing raw XML that nobody reads.
+- [ ] **Rotate the Resend API key** — the current one was pasted into a chat
+      transcript. Two clicks in Resend, then update `.env.local`.
+- [ ] Delete or re-password the `admin@mabrowns.ca` account created by testing.
+- [ ] Send a real order confirmation to a Gmail, Outlook and Yahoo address and
+      confirm none land in spam.
+
+### Serving
+
+- [ ] Replace `next dev` with `next build && next start`. The dev server is
+      slow, unoptimised and not built for public traffic.
+- [ ] Remove the `no-store` header on `/_next/*` in `deploy/Caddyfile`.
+      It exists because dev chunks reuse URLs; production assets are
+      content-hashed and should be cached hard. Leaving it costs every visitor
+      a full re-download on every page.
+- [ ] Make `:80` redirect to HTTPS rather than proxying, and drop the port 80
+      forward.
+- [ ] Firewall port 443 to Cloudflare's published ranges, so the forwarded IP
+      headers that rate limiting trusts cannot be forged.
+
+### Data
+
+- [ ] Move from SQLite to Postgres.
+- [ ] Automated backups, and a restore actually tested — an untested backup is
+      not a backup.
+
+### Legal and trust
+
+- [ ] Privacy policy, terms, returns/refunds, shipping policy.
+- [ ] Cookie/consent banner if required.
+
+### The switch itself
+
+- [ ] `SITE_LOCKED=false` — this is the actual go-live. Everything above should
+      be done first, because this is the moment strangers can reach it.
+- [ ] Verify the sitemap and `robots.txt` allow indexing (the gate sends
+      `noindex` on every page while locked).
+- [ ] Submit the sitemap in Google Search Console.
+
+---
+
 ## Cross-cutting (ongoing, not a phase)
 
 - [ ] Mobile-first at every step — every feature checked on a phone before it's "done"
