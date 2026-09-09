@@ -7,6 +7,14 @@ import { db } from "./db";
 import { fakeVerify, hashPassword, verifyPassword } from "./password";
 import { mergeCartIntoUser } from "./cart";
 import { sendEmailVerification } from "./email";
+import {
+  clientIp,
+  consume,
+  describeWait,
+  LIMITS,
+  peek,
+  reset as resetLimit,
+} from "./rate-limit";
 
 export const SESSION_COOKIE = "mbc-session";
 const SESSION_DAYS = 30;
@@ -138,6 +146,15 @@ export async function registerUser(
   const passwordProblem = validatePassword(password);
   if (passwordProblem) return { ok: false, error: passwordProblem };
 
+  const ip = await clientIp();
+  const ipLimit = await consume(`register:ip:${ip}`, LIMITS.registerPerIp);
+  if (!ipLimit.allowed) {
+    return {
+      ok: false,
+      error: `Too many accounts created from here. Try again in ${describeWait(ipLimit.retryAfter)}.`,
+    };
+  }
+
   const existing = await db.user.findUnique({
     where: { email },
     select: { id: true },
@@ -194,6 +211,20 @@ export async function loginUser(
   password: string,
 ): Promise<AuthResult> {
   const email = normaliseEmail(emailRaw);
+
+  // Checked before anything else: the per-account lockout below only stops
+  // many guesses at one account. This stops one password being sprayed across
+  // many accounts, where each account would otherwise see a single failure.
+  const ip = await clientIp();
+  const ipKey = `login:ip:${ip}`;
+  const ipLimit = await peek(ipKey, LIMITS.loginPerIp);
+  if (!ipLimit.allowed) {
+    return {
+      ok: false,
+      error: `Too many sign-in attempts. Try again in ${describeWait(ipLimit.retryAfter)}.`,
+    };
+  }
+
   const user = await db.user.findUnique({
     where: { email },
     select: {
@@ -208,8 +239,10 @@ export async function loginUser(
 
   if (!user) {
     // Spend the same time as a real check so the response time doesn't reveal
-    // whether the account exists.
+    // whether the account exists — and still count it, or an attacker could
+    // probe for free using addresses that don't exist.
     await fakeVerify();
+    await consume(ipKey, LIMITS.loginPerIp);
     return { ok: false, error: genericError };
   }
 
@@ -225,6 +258,7 @@ export async function loginUser(
 
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid) {
+    await consume(ipKey, LIMITS.loginPerIp);
     const attempts = user.failedLoginAttempts + 1;
     await db.user.update({
       where: { id: user.id },
@@ -243,6 +277,9 @@ export async function loginUser(
     where: { id: user.id },
     data: { failedLoginAttempts: 0, lockedUntil: null },
   });
+  // A genuine sign-in clears the address's failure budget, so a household
+  // sharing an address isn't punished for one person's typos.
+  await resetLimit(ipKey);
 
   // Fold whatever they had in the anonymous cart into their account before the
   // session changes, so nothing is lost by signing in.

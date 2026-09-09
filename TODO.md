@@ -149,8 +149,10 @@ Still to add in Phase 7's admin UI:
 
 - Verification is intentionally not a barrier: it never blocks buying, and
   unverified accounts are never deleted. Reasoning in `SECURITY.md`
-- [ ] Rate limiting is per account, not per IP. One attacker spraying many
-      accounts is not slowed down. Worth adding before launch.
+- [x] Per-address rate limiting on sign-in, registration, reset requests and
+      verification re-sends — see `SECURITY.md`
+- [ ] Firewall port 443 to Cloudflare's ranges, so forwarded IP headers can't
+      be forged by hitting the origin directly
 
 ## Phase 4 — Checkout & orders
 

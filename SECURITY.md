@@ -89,6 +89,13 @@ expiry.
 
 ## Brute force
 
+Two limits, because they stop different attacks. The per-account lockout stops
+many guesses against **one** account; the per-address limit stops one password
+being sprayed across **many** accounts, where each account would only ever see
+a single failure.
+
+### Per account
+
 **5 failed attempts locks an account for 15 minutes.**
 
 The counter lives in the database, not memory, so a restart does not clear it
@@ -100,6 +107,42 @@ by guessing wrong on purpose.
 
 **During a lock, even the correct password is refused.** Otherwise the lock
 tells an attacker when they have guessed right.
+
+### Per address
+
+Fixed-window counters in the database (`src/lib/rate-limit.ts`), so a restart
+cannot clear an attacker's budget:
+
+| What | Limit | Window |
+|---|---|---|
+| Failed sign-ins | 25 | 15 min |
+| Accounts created | 5 | 1 hour |
+| Reset requests, per address | 5 | 1 hour |
+| Reset requests, per email | 3 | 1 hour |
+| Verification re-sends, per account | 3 | 1 hour |
+
+**Failures against addresses that don't exist still count**, or an attacker
+could probe for free using made-up emails.
+
+**A successful sign-in clears the address's budget**, so a household sharing an
+address is not punished for one person's typos.
+
+**Reset requests are limited per recipient as well as per sender**, so nobody
+can be mail-bombed by an attacker who knows their address.
+
+**Throttled reset requests return the same message as successful ones.** A
+different response when throttled would itself reveal which addresses are
+registered.
+
+The sign-in limit is generous on purpose: households, offices and mobile
+carriers share addresses, and locking out a whole building to slow one attacker
+is a bad trade. 25 failures in 15 minutes is far below what a spraying attack
+needs and far above what a real person produces.
+
+**Limitation.** Client addresses come from forwarded headers, which are
+authoritative behind Cloudflare but forgeable by anyone reaching the origin
+directly. The fix is a firewall limiting 443 to Cloudflare's ranges — until
+then this is defence in depth, not the only defence.
 
 ---
 
@@ -175,9 +218,10 @@ private should rely on it.
 
 Real, and deliberately not hidden:
 
-- **Rate limiting is per account, not per IP.** One attacker spraying many
-  accounts is not slowed at all. Should be fixed before launch.
 - **Email verification is not enforced** — see below.
+- **Rate limiting trusts forwarded IP headers**, which can be forged by
+  reaching the origin directly rather than through Cloudflare. Firewalling 443
+  to Cloudflare's ranges closes this.
 - **No CSRF tokens.** Next's Server Actions are same-origin POSTs and the
   session cookie is `sameSite=lax`, which covers the common cases, but this is
   worth revisiting before checkout handles money.

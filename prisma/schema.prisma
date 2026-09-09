@@ -340,3 +340,16 @@ model Address {
 
   @@index([userId])
 }
+
+/// Fixed-window counters for rate limiting.
+///
+/// Kept in the database rather than memory so a restart cannot clear an
+/// attacker's budget, and so it still holds if this ever runs as more than one
+/// process. Rows are disposable — expired ones are swept opportunistically.
+model RateLimit {
+  key     String   @id
+  count   Int      @default(0)
+  resetAt DateTime
+
+  @@index([resetAt])
+}
