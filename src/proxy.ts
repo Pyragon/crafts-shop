@@ -23,6 +23,7 @@ import { isIpAllowed, parseRules } from "@/lib/ip-allowlist";
  */
 
 const PREVIEW_COOKIE = "mbc-preview";
+const COMING_SOON_PATH = "/coming-soon";
 
 const DEFAULT_ALLOWED = [
   "127.0.0.1/32",
@@ -53,8 +54,15 @@ function clientIp(request: NextRequest): string | null {
 export default function proxy(request: NextRequest) {
   if (process.env.SITE_LOCKED === "false") return NextResponse.next();
 
-  const token = process.env.SITE_PREVIEW_TOKEN;
   const url = request.nextUrl;
+
+  // A rewritten request re-enters this proxy with the new path, so the
+  // coming-soon page has to be let through explicitly. Without this the gate
+  // rewrites /coming-soon to /coming-soon forever, Next tries to proxy to
+  // itself, and the request hangs instead of returning anything.
+  if (url.pathname === COMING_SOON_PATH) return NextResponse.next();
+
+  const token = process.env.SITE_PREVIEW_TOKEN;
 
   // ?preview=<token> stores the cookie, then reloads without the query param
   // so the token doesn't linger in the address bar or get shared in a link.
@@ -67,7 +75,11 @@ export default function proxy(request: NextRequest) {
       httpOnly: true,
       sameSite: "lax",
       path: "/",
-      secure: url.protocol === "https:",
+      // X-Origin-Proto is set by the reverse proxy; url.protocol is only
+      // right when Next is exposed directly.
+      secure:
+        request.headers.get("x-origin-proto") === "https" ||
+        url.protocol === "https:",
       maxAge: 60 * 60 * 24 * 180, // ~6 months
     });
     return response;
@@ -86,7 +98,16 @@ export default function proxy(request: NextRequest) {
   const headers = new Headers(request.headers);
   headers.set("x-site-locked", "1");
 
-  const response = NextResponse.rewrite(new URL("/coming-soon", request.url), {
+  // The rewrite target must share an origin with the incoming request or Next
+  // treats it as an external rewrite and tries to proxy to it over the network
+  // — which fails behind a TLS-terminating proxy, because the forwarded
+  // protocol says https while the origin server speaks plain HTTP. Cloning
+  // nextUrl keeps scheme, host and port identical, so it stays internal.
+  const target = request.nextUrl.clone();
+  target.pathname = COMING_SOON_PATH;
+  target.search = "";
+
+  const response = NextResponse.rewrite(target, {
     request: { headers },
   });
   // Keep a placeholder out of the index; the real pages get crawled at launch.

@@ -47,6 +47,35 @@ npm run dev -- --hostname 0.0.0.0 --port 3000
 | LAN       | `http://10.0.0.103:3000`   |
 | Tailscale | `http://100.77.38.45:3000` |
 
+### Architecture
+
+```
+Cloudflare edge  ──TLS──>  Caddy (:80, :443)  ──HTTP──>  Next.js (127.0.0.1:3000)
+```
+
+Caddy terminates TLS with a Cloudflare Origin CA certificate. Next binds to
+loopback only, so it is reachable exclusively through the proxy.
+
+```sh
+npm run dev:origin   # Next on 127.0.0.1:3000
+npm run proxy        # Caddy on :80 and :443
+```
+
+`caddy reload --config deploy/Caddyfile` applies config changes with no
+downtime (the admin API listens on localhost:2019).
+
+> **Gotcha, and an expensive one.** Caddy deliberately strips
+> `X-Forwarded-Proto` and sends the scheme as `X-Origin-Proto` instead. Next
+> derives its request URLs from `X-Forwarded-Proto`; with `https` there, an
+> *internal* rewrite looks cross-origin to it, because the origin server itself
+> speaks plain HTTP on loopback. It then tries to proxy to
+> `https://localhost:3000` and fails with `wrong version number`. The gate's
+> rewrite to `/coming-soon` is the only thing that does this, so the symptom is
+> that gated visitors hang while allowed ones are fine.
+>
+> Related: the rewritten request re-enters `proxy.ts`, so `/coming-soon` has to
+> be let through explicitly or the gate rewrites it to itself forever.
+
 ### Public access
 
 The site is served through Cloudflare at **https://mabrowns.ca**, with port 80

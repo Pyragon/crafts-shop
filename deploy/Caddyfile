@@ -10,7 +10,8 @@
 #
 #   caddy run --config deploy/Caddyfile
 {
-	admin off
+	# Admin API on loopback only, so `caddy reload` works (zero-downtime).
+	admin localhost:2019
 	# No ACME: certs come from Cloudflare's Origin CA, and this box isn't
 	# publicly resolvable for an HTTP-01 challenge anyway.
 	auto_https off
@@ -24,6 +25,14 @@
 		# websocket upgrade used by dev HMR.
 		header_up Host {host}
 		header_up X-Forwarded-Host {host}
+
+		# Next derives its request URLs from X-Forwarded-Proto. With https there,
+		# an internal rewrite looks cross-origin to it (the origin server itself
+		# speaks plain HTTP on loopback), so it tries to proxy to
+		# https://localhost:3000 and fails with "wrong version number".
+		# Strip it and pass the real scheme under a name Next doesn't interpret.
+		header_up -X-Forwarded-Proto
+		header_up X-Origin-Proto {scheme}
 	}
 }
 
@@ -44,14 +53,16 @@ http://mabrowns.ca, http://www.mabrowns.ca {
 # split ranking signals and backlinks between them. A 301 consolidates all of
 # that onto mabrowns.ca. {uri} preserves the path, so a deep link still lands
 # in the right place.
-https://mabrown.ca, https://www.mabrown.ca {
-	tls /home/cody/.config/mabrowns-tls/mabrown-ca.pem /home/cody/.config/mabrowns-tls/mabrown-ca.key
-	redir https://mabrowns.ca{uri} permanent
-}
-
-http://mabrown.ca, http://www.mabrown.ca {
-	redir https://mabrowns.ca{uri} permanent
-}
+# TODO: uncomment once mabrown-ca.pem exists (Origin CA cert for mabrown.ca),
+# then `caddy reload --config deploy/Caddyfile` — reload is zero-downtime.
+#https://mabrown.ca, https://www.mabrown.ca {
+#	tls /home/cody/.config/mabrowns-tls/mabrown-ca.pem /home/cody/.config/mabrowns-tls/mabrown-ca.key
+#	redir https://mabrowns.ca{uri} permanent
+#}
+#
+#http://mabrown.ca, http://www.mabrown.ca {
+#	redir https://mabrowns.ca{uri} permanent
+#}
 
 # --- direct IP access (LAN, Tailscale) ------------------------------------
 # Catch-all for port 80; the host-specific blocks above take precedence.
