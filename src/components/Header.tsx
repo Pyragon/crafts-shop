@@ -137,18 +137,20 @@ export function Header() {
       </header>
 
       {/* Mobile drawer */}
+      {/* Inline styles for the open/closed state — see CartDrawer for why. */}
       <div
-        className={`fixed inset-0 z-50 lg:hidden ${open ? "" : "pointer-events-none"}`}
+        className="fixed inset-0 z-50 lg:hidden"
+        style={{ pointerEvents: open ? "auto" : "none" }}
         aria-hidden={!open}
+        inert={!open}
       >
         <button
           type="button"
           tabIndex={-1}
           aria-label="Close menu"
           onClick={() => setOpen(false)}
-          className={`absolute inset-0 bg-ink/40 transition-opacity duration-300 ${
-            open ? "opacity-100" : "opacity-0"
-          }`}
+          className="absolute inset-0 bg-ink/40 transition-opacity duration-300"
+          style={{ opacity: open ? 1 : 0 }}
         />
         <div
           ref={panelRef}
@@ -156,9 +158,8 @@ export function Header() {
           role="dialog"
           aria-modal={open}
           aria-label="Site menu"
-          className={`absolute inset-y-0 left-0 flex w-[min(20rem,85vw)] flex-col bg-paper shadow-2xl transition-transform duration-300 [transition-timing-function:var(--ease-out-soft)] ${
-            open ? "translate-x-0" : "-translate-x-full"
-          }`}
+          className="absolute inset-y-0 left-0 flex w-[min(20rem,85vw)] flex-col bg-paper shadow-2xl transition-transform duration-300 [transition-timing-function:var(--ease-out-soft)]"
+          style={{ transform: open ? "translateX(0)" : "translateX(-100%)" }}
         >
           <div className="flex h-16 items-center justify-between border-b border-line px-5">
             <span className="font-display text-lg text-ink">{site.name}</span>

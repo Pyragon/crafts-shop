@@ -29,18 +29,25 @@ export function CartDrawer() {
   }, [isOpen, close]);
 
   return (
+    // The open/closed state is driven by inline styles, not utility classes.
+    // Next's dev CSS chunk keeps a stable URL while its contents change, so a
+    // cached stylesheet can be missing a newly-used class — which once left
+    // this drawer permanently on screen and unclickable. Inline styles ship
+    // with the markup and cannot go stale. `inert` also keeps the closed
+    // drawer out of the tab order.
     <div
-      className={`fixed inset-0 z-50 ${isOpen ? "" : "pointer-events-none"}`}
+      className="fixed inset-0 z-50"
+      style={{ pointerEvents: isOpen ? "auto" : "none" }}
       aria-hidden={!isOpen}
+      inert={!isOpen}
     >
       <button
         type="button"
         tabIndex={-1}
         aria-label="Close cart"
         onClick={close}
-        className={`absolute inset-0 bg-ink/40 transition-opacity duration-300 ${
-          isOpen ? "opacity-100" : "opacity-0"
-        }`}
+        className="absolute inset-0 bg-ink/40 transition-opacity duration-300"
+        style={{ opacity: isOpen ? 1 : 0 }}
       />
 
       <div
@@ -48,9 +55,8 @@ export function CartDrawer() {
         role="dialog"
         aria-modal={isOpen}
         aria-label="Shopping cart"
-        className={`absolute inset-y-0 right-0 flex w-[min(26rem,92vw)] flex-col bg-paper shadow-2xl transition-transform duration-300 [transition-timing-function:var(--ease-out-soft)] ${
-          isOpen ? "translate-x-0" : "translate-x-full"
-        }`}
+        className="absolute inset-y-0 right-0 flex w-[min(26rem,92vw)] flex-col bg-paper shadow-2xl transition-transform duration-300 [transition-timing-function:var(--ease-out-soft)]"
+        style={{ transform: isOpen ? "translateX(0)" : "translateX(100%)" }}
       >
         <div className="flex h-16 shrink-0 items-center justify-between border-b border-line px-5">
           <h2 className="font-display text-lg text-ink">

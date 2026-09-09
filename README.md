@@ -92,6 +92,19 @@ npm run proxy        # Caddy on :80 and :443
 `caddy reload --config deploy/Caddyfile` applies config changes with no
 downtime (the admin API listens on localhost:2019).
 
+> **Dev asset caching.** Next's dev CSS/JS chunks keep a *stable URL* while
+> their contents change — the same `[root-of-the-server]__*.css` URL served
+> 40KB early in a session and 43KB later. Anything that caches by URL (a
+> browser, or Cloudflare) will therefore serve stale styles, and the symptom is
+> baffling: a component that uses a newly-added utility class renders as if
+> that class does not exist. This bit twice — a search icon that ignored its
+> padding, and a cart drawer stuck on screen and unclickable.
+>
+> Caddy now sends `no-store` for `/_next/*` so it cannot recur, and drawer
+> open/closed state is driven by **inline styles** rather than utility classes,
+> so it cannot depend on the stylesheet being current. If something still looks
+> wrong after a change, hard-refresh before debugging anything else.
+
 > **Gotcha, and an expensive one.** Caddy deliberately strips
 > `X-Forwarded-Proto` and sends the scheme as `X-Origin-Proto` instead. Next
 > derives its request URLs from `X-Forwarded-Proto`; with `https` there, an
