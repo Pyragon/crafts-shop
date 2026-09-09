@@ -179,8 +179,14 @@ const products: SeedProduct[] = [
       "Six blank cards printed on a hand-fed platen press, with a deep bite into soft cotton rag paper — run your thumb over it and you can feel the type. Blank inside for your own words. Includes six matching envelopes.",
     priceCents: 1800,
     sku: "PAP-CRD-06",
-    stock: 30,
     category: "paper",
+    // Demonstrates a free-form yes/no style axis: the option name and both of
+    // its values are just strings the shop owner types in.
+    options: [{ name: "Lettering", values: ["Not lettered", "Lettered"] }],
+    variants: [
+      { options: ["Not lettered"], stock: 30, sku: "PAP-CRD-06-PLAIN" },
+      { options: ["Lettered"], stock: 12, priceCents: 2600, sku: "PAP-CRD-06-LTR" },
+    ],
     published: 70,
   },
   {

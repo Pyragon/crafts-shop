@@ -56,8 +56,18 @@ split ranking signals between pages that then compete with each other.
 - Optional per-variant image, ready for uploads in Phase 7
 - Admin "add variant" is a row insert; option axes are their own rows
 
-Still to add in Phase 7's admin UI: generating the variant grid from chosen
-option values, and bulk stock editing.
+**Option names and values are free text**, not a fixed list. An axis can be
+"Glaze", "Size", "Design", "Lettering" — whatever the piece needs — and its
+values are equally free ("Lettered" / "Not lettered"). Nothing is enumerated in
+the schema, so the admin never needs a code change to add a new kind of choice.
+
+Still to add in Phase 7's admin UI:
+
+- [ ] Define option axes on a product, then generate the variant grid from the
+      chosen values
+- [ ] Bulk stock editing across a product's variants
+- [ ] Suggest previously-used values while typing — free text means "Indigo"
+      and "indigo" would otherwise become two different options
 
 ### Carried into Phase 6 (SEO)
 
