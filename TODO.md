@@ -30,16 +30,28 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[?]` needs a decision 
 - [x] `SITE_LOCKED=false` launch switch, restores static prerendering
 - [ ] Wire the notify-me form to a real mailing list (with Phase 5)
 
-## Phase 1 — Product catalog  ← NEXT
+## Phase 1 — Product catalog  ✅ COMPLETE
 
-- [ ] Choose DB + ORM — planning on **Prisma + SQLite** for dev, Postgres for prod
-- [ ] Schema: `Product`, `Category`, `ProductImage`, `ProductVariant`
-- [ ] Seed script with realistic sample craft products
-- [ ] `/shop` listing: grid, category filter, sort, pagination
-- [ ] `/shop/[slug]` product detail: image gallery, price, stock, add-to-cart
-- [ ] Category pages `/shop/category/[slug]`
-- [ ] Product search
-- [ ] Empty / out-of-stock / not-found states
+- [x] DB + ORM — **Prisma 7 + SQLite** (pinned to 7.10.0; `latest` on npm is an RC)
+- [x] Schema: `Product`, `Category`, `ProductImage` — variants deliberately deferred, see note
+- [x] Seed script — 4 categories, 12 published products, 1 draft kept as a guard
+- [x] `/shop` listing: grid, category filter, sort, pagination (8/page)
+- [x] `/shop/[slug]` detail: gallery, price, sale/stock states, related products
+- [x] Category pages `/shop/category/[slug]`
+- [x] Product search at `/search` (noindex — thin, duplicated content)
+- [x] Empty / sold-out / not-found states; out-of-range pages 404 rather than soft-404
+
+### Note: product variants
+
+Deferred on purpose. Variants (size/colour) complicate the cart and checkout
+considerably, and for one-off handmade pieces most products have none. Stock
+lives on `Product`. If variants are wanted later it is a migration plus cart
+changes, so it is worth deciding before Phase 4 rather than after.
+
+### Carried into Phase 6 (SEO)
+
+- [ ] Canonical/noindex handling for sorted and filtered listing URLs —
+      `?sort=` variants are duplicate content
 
 ## Phase 2 — Cart
 

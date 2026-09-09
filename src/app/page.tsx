@@ -1,12 +1,17 @@
 import Link from "next/link";
 import { site } from "@/lib/site";
-import { categories, newArrivals, recentPosts } from "@/lib/placeholder-data";
+import { getCategories, getFeaturedProducts } from "@/lib/catalog";
+import { recentPosts } from "@/lib/placeholder-data";
 import { formatDate } from "@/lib/format";
 import { ProductCard } from "@/components/ProductCard";
 import { ArrowIcon } from "@/components/icons";
 
-export default function HomePage() {
-  const featured = newArrivals(4);
+export default async function HomePage() {
+  // Blog posts are still placeholder content until Phase 5.
+  const [categories, featured] = await Promise.all([
+    getCategories(),
+    getFeaturedProducts(4),
+  ]);
   const journal = recentPosts(3);
 
   return (
@@ -107,7 +112,7 @@ export default function HomePage() {
 
         <div className="mt-8 grid grid-cols-2 gap-x-4 gap-y-9 sm:gap-x-6 lg:grid-cols-4">
           {featured.map((p) => (
-            <ProductCard key={p.slug} product={p} />
+            <ProductCard key={p.id} product={p} />
           ))}
         </div>
 

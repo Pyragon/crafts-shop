@@ -21,9 +21,31 @@ node -v   # v24.20.0
 ## Running it
 
 ```sh
-npm install        # first time only
+npm install        # runs `prisma generate` via postinstall
+npm run db:migrate # create/apply migrations
+npm run db:seed    # load sample catalogue
 npm run dev        # http://localhost:3000
 ```
+
+### Database
+
+Prisma 7 with SQLite in development. Two things to know:
+
+- **Prisma is pinned to 7.10.0.** npm's `latest` tag currently points at
+  `8.0.0-rc`, so an unpinned install silently mixes an RC CLI with a stable
+  client. Don't loosen it without checking `npm view prisma dist-tags`.
+- **Prisma 7 moved the connection URL out of `schema.prisma`** into
+  `prisma.config.ts`, and connects through a driver adapter
+  (`@prisma/adapter-better-sqlite3`). `DATABASE_URL` lives in `.env`, which
+  both Prisma and Next read.
+
+```sh
+npm run db:studio  # browse the data
+npm run db:reset   # drop, re-migrate, re-seed
+```
+
+The seed leaves one product in `DRAFT` on purpose, as a standing check that
+unpublished products never reach the storefront.
 
 Other scripts:
 
@@ -155,6 +177,8 @@ src/
   proxy.ts           pre-launch gate (Next 16's middleware convention)
   lib/
     site.ts          BRANDING — shop name, tagline, nav, socials
+    db.ts            Prisma client singleton
+    catalog.ts       catalogue queries (always filtered to PUBLISHED)
     ip-allowlist.ts  CIDR matching for the gate
     format.ts        price/date formatting
     placeholder-data.ts   temporary content, replaced by the DB in Phase 1
@@ -169,6 +193,8 @@ tags, header, footer and (later) emails.
 ## Conventions
 
 - **Prices are integer cents.** Never floats — use `formatPrice()` to display.
+- **Storefront queries go through `@/lib/catalog`**, which filters to
+  `PUBLISHED` in one place. Don't query products directly from a page.
 - **Mobile first.** Every feature is checked at 360px before it's called done.
 - Placeholder product artwork is a deterministic gradient derived from the
   slug; real photography arrives with uploads in Phase 7.

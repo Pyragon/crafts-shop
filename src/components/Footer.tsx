@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { site } from "@/lib/site";
-import { categories } from "@/lib/placeholder-data";
+import { getCategories } from "@/lib/catalog";
 import { ArrowIcon } from "./icons";
 
-export function Footer() {
+export async function Footer() {
+  const categories = await getCategories();
   return (
     <footer className="mt-24 border-t border-line bg-paper-sunk">
       <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6 lg:py-20">
