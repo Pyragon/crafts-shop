@@ -184,6 +184,20 @@ whether to draw the shop chrome, which forces every page to render on demand.
 > going through Cloudflare. Anything that must genuinely stay private needs
 > real auth or a firewall limited to Cloudflare's ranges.
 
+## Accounts
+
+Hand-rolled session auth — no Auth.js. Passwords use `scrypt` from Node's
+standard library, so there is no native dependency to compile.
+
+- Session and reset tokens are stored hashed; the cookie holds the raw value
+- Sign-out deletes the session row, so it takes effect immediately
+- 8 failed sign-ins lock an account for 15 minutes
+- `requireUser()` guards pages; the proxy is deliberately not involved
+
+**Email is not wired up.** Every message prints to the server console with its
+link, so password reset can be tested end to end today. Choosing a provider
+means filling in `deliver()` in `src/lib/email.ts` and nothing else.
+
 ## Layout
 
 ```
@@ -199,6 +213,10 @@ src/
     db.ts            Prisma client singleton (server-only)
     catalog.ts       catalogue queries (always filtered to PUBLISHED)
     cart.ts          cart persistence; stock is enforced here, not client-side
+    auth.ts          sessions, registration, sign-in, tokens
+    password.ts      scrypt hashing
+    require-auth.ts  page guards
+    email.ts         transactional email (console stub for now)
     variants.ts      option/variant helpers — dependency-free, safe for clients
     swatch.ts        placeholder colours — dependency-free, safe for clients
     ip-allowlist.ts  CIDR matching for the gate

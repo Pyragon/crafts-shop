@@ -7,6 +7,7 @@ import { Footer } from "@/components/Footer";
 import { CartProvider } from "@/components/CartProvider";
 import { CartDrawer } from "@/components/CartDrawer";
 import { getCart } from "@/lib/cart";
+import { getCurrentUser } from "@/lib/auth";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -88,7 +89,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             >
               Skip to content
             </a>
-            <Header />
+            <Header signedIn={!!(await getCurrentUser())} />
             <main id="main" className="flex-1">
               {children}
             </main>

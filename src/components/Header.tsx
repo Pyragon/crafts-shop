@@ -7,7 +7,7 @@ import { site } from "@/lib/site";
 import { CartIcon, CloseIcon, MenuIcon, SearchIcon, UserIcon } from "./icons";
 import { useCart } from "./CartProvider";
 
-export function Header() {
+export function Header({ signedIn = false }: { signedIn?: boolean }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -108,11 +108,17 @@ export function Header() {
               <SearchIcon />
             </Link>
             <Link
-              href="/account"
-              aria-label="Account"
-              className="rounded-full p-2 text-ink transition-colors hover:bg-paper-sunk"
+              href={signedIn ? "/account" : "/login"}
+              aria-label={signedIn ? "Your account" : "Sign in"}
+              className="relative rounded-full p-2 text-ink transition-colors hover:bg-paper-sunk"
             >
               <UserIcon />
+              {signedIn && (
+                <span
+                  aria-hidden
+                  className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-sage"
+                />
+              )}
             </Link>
             {/* Still a real link, so it works without JavaScript; with JS the
                 click is intercepted to open the drawer instead. */}
@@ -197,10 +203,10 @@ export function Header() {
             <ul className="space-y-1">
               <li>
                 <Link
-                  href="/account"
+                  href={signedIn ? "/account" : "/login"}
                   className="block rounded-lg px-3 py-2.5 text-sm text-ink-soft hover:bg-paper-sunk"
                 >
-                  Account &amp; orders
+                  {signedIn ? "Account & orders" : "Sign in"}
                 </Link>
               </li>
               <li>

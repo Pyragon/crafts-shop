@@ -102,7 +102,7 @@ Still to add in Phase 7's admin UI:
 - [x] Cart drawer (slide-over) + full `/cart` page
 - [x] Header cart badge with live item count
 - [x] Subtotal + free-shipping threshold; shipping/tax deferred to checkout
-- [~] `mergeCartIntoUser()` written and ready — called from sign-in in Phase 3
+- [x] Anonymous cart merges into the account on sign-in and sign-up
 - [x] Stock validation server-side, per variant (clamps, never trusts the client)
 - [x] Cart lines are per variant — two glazes of one mug are two lines
 
@@ -113,17 +113,43 @@ Still to add in Phase 7's admin UI:
   broken without JS — but the +/- controls are inert. Worth a plain form
   fallback if it ever matters.
 
-## Phase 3 — Accounts & auth
+## Phase 3 — Accounts & auth  ✅ COMPLETE
 
-- [ ] Pick auth approach — leaning **Auth.js (NextAuth) v5** with credentials + optional Google
-- [ ] Register / login / logout
-- [ ] Password hashing (argon2 or bcrypt), rate limiting on login
-- [ ] Email verification + password reset  `[?]` needs an email provider (Resend? SMTP?)
-- [ ] `/account` dashboard
-- [ ] `/account/orders` order history list
-- [ ] `/account/orders/[id]` order detail
-- [ ] `/account/addresses` saved addresses
-- [ ] Route protection middleware
+- [x] Auth approach — **hand-rolled sessions**, not Auth.js. v5 is still beta
+      (5.0.0-beta.32) and v4 predates the App Router; after the Prisma RC, a
+      beta under the login system was not worth it. Credentials-only auth is
+      small, and Node ships scrypt, so this adds no dependency at all.
+- [x] Register / login / logout
+- [x] Password hashing (scrypt, from node:crypto) + per-account lockout
+- [x] Password reset — full flow, tokens stored hashed, single use, 1h expiry
+- [~] Email delivery stubbed: messages print to the server console with their
+      link, so flows are testable. `[?]` provider still open (Resend? SMTP?)
+- [ ] Email verification — model and mail written, not yet enforced anywhere
+- [x] `/account` dashboard
+- [x] `/account/orders` — empty state; real orders arrive with Phase 4
+- [ ] `/account/orders/[id]` order detail — waiting on orders existing
+- [x] `/account/addresses` — model and list; adding happens at checkout
+- [x] Route protection via `requireUser()` in pages, not the proxy — the proxy
+      runs on every request, and a session read there is a query per asset
+
+### Security notes
+
+- Passwords: scrypt, salted per user, parameters stored in the hash so they can
+  be raised later without a migration
+- Session tokens and reset tokens are stored **hashed** — a leaked database
+  cannot be replayed or used to reset anyone's password
+- Sign-in returns one message whether the email exists or not, and spends the
+  same time either way, so the form cannot be used to enumerate accounts
+- 8 failed attempts locks the account for 15 minutes; the counter lives in the
+  database so a restart does not clear it
+- A password reset destroys every existing session
+
+### Known gaps
+
+- [ ] Email verification is not enforced — nothing yet depends on a verified
+      address, so it can wait for the provider decision
+- [ ] Rate limiting is per account, not per IP. One attacker spraying many
+      accounts is not slowed down. Worth adding before launch.
 
 ## Phase 4 — Checkout & orders
 
