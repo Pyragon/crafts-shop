@@ -197,6 +197,34 @@ characters into a 3-character field, which the server rejected.
 
 ---
 
+## Email
+
+Sent through **Resend** as `noreply@mabrowns.ca`. Inbound `admin@mabrowns.ca`
+is forwarded to Gmail by Cloudflare Email Routing.
+
+The two do not collide because Resend's MX and SPF sit on `send.mabrowns.ca`
+while Email Routing owns the root MX and root SPF. SPF is checked against the
+return-path (`send.`), DKIM is signed on the root, so DMARC aligns and the
+visible From address is still on the apex.
+
+| Record | Where | Purpose |
+|---|---|---|
+| MX `route1-3.mx.cloudflare.net` | root | inbound to Gmail |
+| `v=spf1 include:_spf.mx.cloudflare.net ~all` | root | Email Routing |
+| MX `feedback-smtp…amazonses.com` | `send` | Resend bounces |
+| `v=spf1 include:amazonses.com ~all` | `send` | Resend return-path |
+| `resend._domainkey` | root | DKIM |
+| `v=DMARC1; p=none; rua=…` | `_dmarc` | monitoring |
+
+DMARC is at `p=none` deliberately — monitor first. Tighten to `quarantine`
+then `reject` once the reports show only legitimate sources.
+
+The API key is scoped to **sending only**; it cannot read or manage domains.
+
+A provider failure is logged, never surfaced. The reset form returns the same
+answer whether or not an account exists, and "we couldn't send that" would
+undo it.
+
 ## Transport
 
 Cloudflare in front, **SSL/TLS mode Full (strict)**, with a Cloudflare Origin

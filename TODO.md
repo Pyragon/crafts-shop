@@ -122,8 +122,7 @@ Still to add in Phase 7's admin UI:
 - [x] Register / login / logout
 - [x] Password hashing (scrypt, from node:crypto) + per-account lockout
 - [x] Password reset — full flow, tokens stored hashed, single use, 1h expiry
-- [~] Email delivery stubbed: messages print to the server console with their
-      link, so flows are testable. `[?]` provider still open (Resend? SMTP?)
+- [x] Email delivery via **Resend**; console fallback when no key is configured
 - [x] Email verification — sent on signup, `/verify-email`, resend button,
       banner on the account page. Deliberately non-blocking
 - [x] `/account` dashboard
@@ -269,7 +268,7 @@ Useful addresses for this machine:
 |---|----------|--------|
 | 1 | Real shop name — **MaBrown's Creations** | done |
 | 2 | Payment provider — Stripe assumed | open |
-| 3 | Email provider for receipts & password resets — flows all work against a console stub | open |
+| 3 | Email provider — **Resend**, sending as noreply@mabrowns.ca | done |
 | 4 | Blog authoring: MDX in repo vs. admin editor | open |
 | 5 | Image hosting for product photos | open |
 | 6 | Domains — **mabrowns.ca** (canonical) + **mabrown.ca** (301s to it) | done |
