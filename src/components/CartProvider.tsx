@@ -9,7 +9,7 @@ import {
   useState,
   useTransition,
 } from "react";
-import type { CartSummary } from "@/lib/cart";
+import type { CartSummary, PersonalisationInput } from "@/lib/cart";
 import {
   addToCartAction,
   removeCartItemAction,
@@ -23,7 +23,11 @@ type CartContextValue = {
   error: string | null;
   open: () => void;
   close: () => void;
-  add: (productId: string, quantity?: number) => void;
+  add: (
+    variantId: string,
+    quantity?: number,
+    personalisation?: PersonalisationInput,
+  ) => void;
   update: (itemId: string, quantity: number) => void;
   remove: (itemId: string) => void;
 };
@@ -75,9 +79,13 @@ export function CartProvider({
   );
 
   const add = useCallback(
-    (productId: string, quantity = 1) => {
+    (
+      variantId: string,
+      quantity = 1,
+      personalisation?: PersonalisationInput,
+    ) => {
       setIsOpen(true);
-      run(() => addToCartAction(productId, quantity));
+      run(() => addToCartAction(variantId, quantity, personalisation));
     },
     [run],
   );

@@ -61,6 +61,25 @@ split ranking signals between pages that then compete with each other.
 values are equally free ("Lettered" / "Not lettered"). Nothing is enumerated in
 the schema, so the admin never needs a code change to add a new kind of choice.
 
+### Personalisation  ✅ DONE
+
+Separate from variants, because they solve different problems: a **variant** is
+a fixed choice the shop decides in advance, while **personalisation** is
+content only the customer can supply.
+
+- `PersonalisationField` per product — label, help text, max length, required
+- Per-variant `personalised` flag, so "Lettered" asks for a monogram while
+  "Not lettered" shows nothing
+- Values stored per cart line in `CartItemPersonalisation` (a real table, not
+  encoded JSON, so the admin can search "who ordered a monogram")
+- Cart lines keyed by `(cart, variant, personalisation digest)` — two monograms
+  of the same variant are two lines, but adding the identical thing twice still
+  just bumps the quantity
+- Pricing stays on the variant; personalisation fields carry no money
+
+Carried into Phase 4: personalisation must be copied onto the order, not
+referenced, so a later edit to a product cannot rewrite what someone bought.
+
 Still to add in Phase 7's admin UI:
 
 - [ ] Define option axes on a product, then generate the variant grid from the
@@ -68,6 +87,8 @@ Still to add in Phase 7's admin UI:
 - [ ] Bulk stock editing across a product's variants
 - [ ] Suggest previously-used values while typing — free text means "Indigo"
       and "indigo" would otherwise become two different options
+- [ ] Define personalisation fields per product, and tick which variants ask
+      for them
 
 ### Carried into Phase 6 (SEO)
 

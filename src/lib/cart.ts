@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { cookies } from "next/headers";
 import { ProductStatus } from "@prisma/client";
 import { db } from "./db";
@@ -20,6 +21,14 @@ import { variantLabel, variantPrice } from "./variants";
 export const CART_COOKIE = "mbc-cart";
 const CART_COOKIE_MAX_AGE = 60 * 60 * 24 * 30; // 30 days
 
+/** What the customer typed, keyed by personalisation field id. */
+export type PersonalisationInput = Record<string, string>;
+
+export type CartLinePersonalisation = {
+  label: string;
+  value: string;
+};
+
 export type CartLine = {
   id: string;
   variantId: string;
@@ -34,6 +43,8 @@ export type CartLine = {
   stock: number;
   lineTotalCents: number;
   image: { url: string; alt: string } | null;
+  /** Empty unless the variant asked for personalisation. */
+  personalisation: CartLinePersonalisation[];
 };
 
 export type CartSummary = {
@@ -53,6 +64,9 @@ const cartInclude = {
   items: {
     orderBy: { createdAt: "asc" as const },
     include: {
+      personalisation: {
+        include: { field: { select: { label: true, position: true } } },
+      },
       variant: {
         include: {
           product: {
@@ -102,6 +116,10 @@ export async function getCart(): Promise<CartSummary> {
 type RawItem = {
   id: string;
   quantity: number;
+  personalisation: {
+    value: string;
+    field: { label: string; position: number };
+  }[];
   variant: {
     id: string;
     option1: string | null;
@@ -140,6 +158,9 @@ function summarise(items: RawItem[]): CartSummary {
         stock: item.variant.stock,
         lineTotalCents: unit * item.quantity,
         image: item.variant.product.images[0] ?? null,
+        personalisation: [...item.personalisation]
+          .sort((a, b) => a.field.position - b.field.position)
+          .map((p) => ({ label: p.field.label, value: p.value })),
       };
     });
 
@@ -185,9 +206,69 @@ async function currentSummary(cartId: string): Promise<CartSummary> {
   return cart ? summarise(cart.items) : EMPTY_CART;
 }
 
+/**
+ * Validates what the customer typed against the product's field definitions
+ * and returns a stable digest.
+ *
+ * The digest is what keeps two monograms on the same variant as two cart
+ * lines, while adding the identical thing twice still just bumps the quantity.
+ * It is sorted by field id so key order can never change the result.
+ */
+function personalisationDigest(
+  entries: { fieldId: string; value: string }[],
+): string {
+  if (entries.length === 0) return "";
+  const canonical = [...entries]
+    .sort((a, b) => a.fieldId.localeCompare(b.fieldId))
+    .map((e) => `${e.fieldId}=${e.value}`)
+    .join("\u0000");
+  return createHash("sha256").update(canonical).digest("hex").slice(0, 32);
+}
+
+type PersonalisationCheck =
+  | { ok: true; entries: { fieldId: string; value: string }[]; key: string }
+  | { ok: false; error: string };
+
+async function checkPersonalisation(
+  productId: string,
+  personalised: boolean,
+  input: PersonalisationInput | undefined,
+): Promise<PersonalisationCheck> {
+  // A variant that asks for nothing stores nothing, even if the client sent
+  // values — the server decides, not the form.
+  if (!personalised) return { ok: true, entries: [], key: "" };
+
+  const fields = await db.personalisationField.findMany({
+    where: { productId },
+    orderBy: { position: "asc" },
+    select: { id: true, label: true, maxLength: true, required: true },
+  });
+  if (fields.length === 0) return { ok: true, entries: [], key: "" };
+
+  const entries: { fieldId: string; value: string }[] = [];
+  for (const field of fields) {
+    const raw = (input?.[field.id] ?? "").trim().replace(/\s+/g, " ");
+    if (!raw) {
+      if (field.required) {
+        return { ok: false, error: `${field.label} is required.` };
+      }
+      continue;
+    }
+    if (raw.length > field.maxLength) {
+      return {
+        ok: false,
+        error: `${field.label} must be ${field.maxLength} characters or fewer.`,
+      };
+    }
+    entries.push({ fieldId: field.id, value: raw });
+  }
+  return { ok: true, entries, key: personalisationDigest(entries) };
+}
+
 export async function addToCart(
   variantId: string,
   quantity = 1,
+  personalisation?: PersonalisationInput,
 ): Promise<CartMutationResult> {
   const variant = await db.productVariant.findFirst({
     where: { id: variantId, product: { status: ProductStatus.PUBLISHED } },
@@ -198,6 +279,8 @@ export async function addToCart(
       option2: true,
       option3: true,
       priceCents: true,
+      personalised: true,
+      productId: true,
       product: { select: { name: true } },
     },
   });
@@ -210,9 +293,24 @@ export async function addToCart(
     ? `${variant.product.name} (${label})`
     : variant.product.name;
 
+  const checked = await checkPersonalisation(
+    variant.productId,
+    variant.personalised,
+    personalisation,
+  );
+  if (!checked.ok) {
+    return { ok: false, error: checked.error, cart: await getCart() };
+  }
+
   const cart = await getOrCreateCart();
   const existing = await db.cartItem.findUnique({
-    where: { cartId_variantId: { cartId: cart.id, variantId } },
+    where: {
+      cartId_variantId_personalisationKey: {
+        cartId: cart.id,
+        variantId,
+        personalisationKey: checked.key,
+      },
+    },
     select: { quantity: true },
   });
 
@@ -226,8 +324,25 @@ export async function addToCart(
   const capped = Math.min(wanted, variant.stock);
 
   await db.cartItem.upsert({
-    where: { cartId_variantId: { cartId: cart.id, variantId } },
-    create: { cartId: cart.id, variantId, quantity: capped },
+    where: {
+      cartId_variantId_personalisationKey: {
+        cartId: cart.id,
+        variantId,
+        personalisationKey: checked.key,
+      },
+    },
+    create: {
+      cartId: cart.id,
+      variantId,
+      quantity: capped,
+      personalisationKey: checked.key,
+      personalisation: {
+        create: checked.entries.map((e) => ({
+          fieldId: e.fieldId,
+          value: e.value,
+        })),
+      },
+    },
     update: { quantity: capped },
   });
 
@@ -317,7 +432,14 @@ export async function mergeCartIntoUser(userId: string): Promise<void> {
 
   const anon = await db.cart.findUnique({
     where: { token },
-    include: { items: { include: { variant: { select: { stock: true } } } } },
+    include: {
+      items: {
+        include: {
+          variant: { select: { stock: true } },
+          personalisation: { select: { fieldId: true, value: true } },
+        },
+      },
+    },
   });
   if (!anon || anon.userId === userId) return;
 
@@ -327,7 +449,13 @@ export async function mergeCartIntoUser(userId: string): Promise<void> {
 
   for (const item of anon.items) {
     const existing = await db.cartItem.findUnique({
-      where: { cartId_variantId: { cartId: userCart.id, variantId: item.variantId } },
+      where: {
+        cartId_variantId_personalisationKey: {
+          cartId: userCart.id,
+          variantId: item.variantId,
+          personalisationKey: item.personalisationKey,
+        },
+      },
       select: { quantity: true },
     });
     const merged = Math.min(
@@ -336,8 +464,25 @@ export async function mergeCartIntoUser(userId: string): Promise<void> {
     );
     if (merged <= 0) continue;
     await db.cartItem.upsert({
-      where: { cartId_variantId: { cartId: userCart.id, variantId: item.variantId } },
-      create: { cartId: userCart.id, variantId: item.variantId, quantity: merged },
+      where: {
+        cartId_variantId_personalisationKey: {
+          cartId: userCart.id,
+          variantId: item.variantId,
+          personalisationKey: item.personalisationKey,
+        },
+      },
+      create: {
+        cartId: userCart.id,
+        variantId: item.variantId,
+        quantity: merged,
+        personalisationKey: item.personalisationKey,
+        personalisation: {
+          create: item.personalisation.map((v) => ({
+            fieldId: v.fieldId,
+            value: v.value,
+          })),
+        },
+      },
       update: { quantity: merged },
     });
   }

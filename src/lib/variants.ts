@@ -17,6 +17,7 @@ export type VariantLike = VariantOptions & {
   priceCents: number | null;
   stock: number;
   sku?: string | null;
+  personalised?: boolean;
 };
 
 export type OptionLike = {

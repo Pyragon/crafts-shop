@@ -226,6 +226,10 @@ tags, header, footer and (later) emails.
   price overrides and SKUs live on the variant; the cart always references a
   variant id. That uniformity is deliberate — it removes the "does this product
   have variants?" branch from every code path.
+- **Variants vs personalisation.** A variant is a fixed choice the shop
+  decides in advance (glaze, size, design). Personalisation is free text only
+  the customer can supply (a monogram). Variants carry the price; personalisation
+  fields never do.
 - **The cart is server-authoritative.** The client sends an id and a desired
   quantity; the server decides what happens against live stock, clamping
   rather than trusting.

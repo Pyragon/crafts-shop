@@ -146,6 +146,11 @@ export function CartDrawer() {
                           {line.variantLabel}
                         </p>
                       )}
+                      {line.personalisation.map((f) => (
+                        <p key={f.label} className="mt-0.5 text-xs text-clay">
+                          {f.label}: “{f.value}”
+                        </p>
+                      ))}
                       <p className="mt-0.5 text-sm text-ink-soft">
                         {formatPrice(line.unitPriceCents)}
                       </p>

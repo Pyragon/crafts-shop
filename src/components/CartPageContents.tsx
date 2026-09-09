@@ -92,6 +92,16 @@ export function CartPageContents() {
                       {line.variantLabel}
                     </p>
                   )}
+                  {line.personalisation.length > 0 && (
+                    <dl className="mt-1.5 space-y-0.5">
+                      {line.personalisation.map((f) => (
+                        <div key={f.label} className="flex gap-2 text-sm">
+                          <dt className="text-ink-faint">{f.label}:</dt>
+                          <dd className="text-clay">“{f.value}”</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  )}
                   <p className="mt-1 line-clamp-2 text-sm text-ink-faint">
                     {line.blurb}
                   </p>

@@ -40,9 +40,19 @@ type SeedOption = { name: string; values: string[] };
 type SeedVariant = {
   options: string[];
   stock: number;
+  /// Asks the customer to fill in the product's personalisation fields.
+  personalised?: boolean;
   /// Absolute price for this variant; omitted means the product's base price.
   priceCents?: number;
   sku?: string;
+};
+
+/** A free-text box the customer fills in, shown only for personalised variants. */
+type SeedPersonalisation = {
+  label: string;
+  helpText?: string;
+  maxLength?: number;
+  required?: boolean;
 };
 
 type SeedProduct = {
@@ -57,6 +67,7 @@ type SeedProduct = {
   stock?: number;
   options?: SeedOption[];
   variants?: SeedVariant[];
+  personalisationFields?: SeedPersonalisation[];
   category: string;
   featured?: boolean;
   status?: ProductStatus;
@@ -185,7 +196,26 @@ const products: SeedProduct[] = [
     options: [{ name: "Lettering", values: ["Not lettered", "Lettered"] }],
     variants: [
       { options: ["Not lettered"], stock: 30, sku: "PAP-CRD-06-PLAIN" },
-      { options: ["Lettered"], stock: 12, priceCents: 2600, sku: "PAP-CRD-06-LTR" },
+      {
+        options: ["Lettered"],
+        stock: 12,
+        priceCents: 2600,
+        sku: "PAP-CRD-06-LTR",
+        personalised: true,
+      },
+    ],
+    personalisationFields: [
+      {
+        label: "Monogram",
+        helpText: "Up to three letters, pressed by hand",
+        maxLength: 3,
+      },
+      {
+        label: "Note for the maker",
+        helpText: "Anything worth knowing",
+        maxLength: 120,
+        required: false,
+      },
     ],
     published: 70,
   },
@@ -286,6 +316,15 @@ async function main() {
             ? daysAgo(p.published ?? 30)
             : null,
         categoryId: categoryIds.get(p.category)!,
+        personalisationFields: {
+          create: (p.personalisationFields ?? []).map((f, i) => ({
+            label: f.label,
+            helpText: f.helpText ?? null,
+            maxLength: f.maxLength ?? 40,
+            required: f.required ?? true,
+            position: i,
+          })),
+        },
         options: {
           create: (p.options ?? []).map((o, i) => ({
             name: o.name,
@@ -309,6 +348,7 @@ async function main() {
         option3: v.options[2] ?? null,
         priceCents: v.priceCents ?? null,
         stock: v.stock,
+        personalised: v.personalised ?? false,
         sku: v.sku ?? null,
         position: i,
       })),

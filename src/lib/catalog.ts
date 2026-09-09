@@ -42,6 +42,17 @@ const productSelect = {
       priceCents: true,
       stock: true,
       sku: true,
+      personalised: true,
+    },
+  },
+  personalisationFields: {
+    orderBy: { position: "asc" },
+    select: {
+      id: true,
+      label: true,
+      helpText: true,
+      maxLength: true,
+      required: true,
     },
   },
 } satisfies Prisma.ProductSelect;

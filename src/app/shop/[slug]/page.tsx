@@ -139,6 +139,7 @@ export default async function ProductPage({
             options={product.options}
             variants={product.variants}
             basePriceCents={product.priceCents}
+            personalisationFields={product.personalisationFields}
           />
           <p className="mt-2 text-xs text-ink-faint">
             Checkout arrives in a later phase; for now this fills the cart.

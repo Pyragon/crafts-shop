@@ -65,8 +65,9 @@ model Product {
 
   images ProductImage[]
 
-  options  ProductOption[]
-  variants ProductVariant[]
+  options               ProductOption[]
+  variants              ProductVariant[]
+  personalisationFields PersonalisationField[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -118,6 +119,11 @@ model ProductVariant {
   stock      Int     @default(0)
   position   Int     @default(0)
 
+  /// Whether choosing this variant asks the customer to fill in the product's
+  /// personalisation fields. Lets "Lettered" require a monogram while
+  /// "Not lettered" asks for nothing.
+  personalised Boolean @default(false)
+
   /// Optional: which photo to show when this variant is selected.
   imageId String?
   image   ProductImage? @relation(fields: [imageId], references: [id], onDelete: SetNull)
@@ -128,6 +134,48 @@ model ProductVariant {
   updatedAt DateTime @updatedAt
 
   @@index([productId, position])
+}
+
+/// A free-text field the customer fills in — a monogram, a name, a date.
+///
+/// Distinct from a variant: a variant is a fixed choice the shop decides in
+/// advance, whereas this is content only the customer can supply. Pricing still
+/// belongs to the variant (a "Lettered" variant simply costs more), so these
+/// fields carry no money.
+model PersonalisationField {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  /// Shown above the input, e.g. "Monogram".
+  label     String
+  /// Optional hint, e.g. "Up to three letters".
+  helpText  String?
+  maxLength Int     @default(40)
+  required  Boolean @default(true)
+  position  Int     @default(0)
+
+  values CartItemPersonalisation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([productId, position])
+}
+
+/// What the customer actually typed, per cart line.
+model CartItemPersonalisation {
+  id         String   @id @default(cuid())
+  cartItemId String
+  cartItem   CartItem @relation(fields: [cartItemId], references: [id], onDelete: Cascade)
+
+  fieldId String
+  field   PersonalisationField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  value String
+
+  @@unique([cartItemId, fieldId])
+  @@index([fieldId])
 }
 
 model ProductImage {
@@ -180,10 +228,17 @@ model CartItem {
 
   quantity Int @default(1)
 
+  /// Stable digest of the personalisation values. Two lines of the same variant
+  /// with different monograms must stay separate, while adding the identical
+  /// thing twice should still just bump the quantity — so the digest is part of
+  /// the key. Empty string when there is no personalisation.
+  personalisationKey String @default("")
+
+  personalisation CartItemPersonalisation[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  /// One row per variant per cart; adding again bumps the quantity.
-  @@unique([cartId, variantId])
+  @@unique([cartId, variantId, personalisationKey])
   @@index([variantId])
 }

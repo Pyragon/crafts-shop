@@ -6,6 +6,7 @@ import {
   removeCartItem,
   updateCartItem,
   type CartMutationResult,
+  type PersonalisationInput,
 } from "@/lib/cart";
 
 /**
@@ -15,10 +16,13 @@ import {
  */
 
 export async function addToCartAction(
-  productId: string,
+  variantId: string,
   quantity = 1,
+  personalisation?: PersonalisationInput,
 ): Promise<CartMutationResult> {
-  const result = await addToCart(productId, quantity);
+  // Personalisation is validated server-side against the product's field
+  // definitions — required-ness and length are not the form's decision.
+  const result = await addToCart(variantId, quantity, personalisation);
   revalidatePath("/cart");
   return result;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { useCart } from "./CartProvider";
 import { ArrowIcon } from "./icons";
 import { formatPrice } from "@/lib/format";
@@ -20,14 +20,24 @@ import {
  * sold out — are shown struck through and disabled rather than hidden, so the
  * range on offer stays visible and nobody can select their way into a dead end.
  */
+export type PersonalisationFieldDef = {
+  id: string;
+  label: string;
+  helpText: string | null;
+  maxLength: number;
+  required: boolean;
+};
+
 export function VariantPicker({
   options,
   variants,
   basePriceCents,
+  personalisationFields = [],
 }: {
   options: OptionLike[];
   variants: VariantLike[];
   basePriceCents: number;
+  personalisationFields?: PersonalisationFieldDef[];
 }) {
   const { add, isPending } = useCart();
 
@@ -43,8 +53,17 @@ export function VariantPicker({
   }, [variants]);
 
   const [selection, setSelection] = useState<(string | null)[]>(initial);
+  const [personalisation, setPersonalisation] = useState<
+    Record<string, string>
+  >({});
+  const [fieldError, setFieldError] = useState<string | null>(null);
+  const fieldPrefix = useId();
 
   const selected = findVariant(variants, selection);
+  // Fields only appear for variants that ask for them, so "Not lettered"
+  // never puts an empty box on screen.
+  const wantsPersonalisation =
+    !!selected?.personalised && personalisationFields.length > 0;
   const price = selected
     ? variantPrice(selected, basePriceCents)
     : basePriceCents;
@@ -149,9 +168,72 @@ export function VariantPicker({
         )}
       </p>
 
+      {wantsPersonalisation && (
+        <div className="mt-7 space-y-4 rounded-xl border border-line bg-paper-raised p-5">
+          {personalisationFields.map((field) => {
+            const value = personalisation[field.id] ?? "";
+            const inputId = `${fieldPrefix}-${field.id}`;
+            return (
+              <div key={field.id}>
+                <label
+                  htmlFor={inputId}
+                  className="block text-xs font-semibold uppercase tracking-[0.15em] text-ink-faint"
+                >
+                  {field.label}
+                  {!field.required && (
+                    <span className="ml-2 normal-case tracking-normal text-ink-faint">
+                      optional
+                    </span>
+                  )}
+                </label>
+                <input
+                  id={inputId}
+                  type="text"
+                  value={value}
+                  maxLength={field.maxLength}
+                  required={field.required}
+                  onChange={(e) => {
+                    setFieldError(null);
+                    setPersonalisation((prev) => ({
+                      ...prev,
+                      [field.id]: e.target.value,
+                    }));
+                  }}
+                  className="mt-2 w-full appearance-none rounded-lg border border-line-strong bg-paper px-4 py-2.5 text-sm text-ink outline-none placeholder:text-ink-faint focus:border-clay"
+                />
+                <p className="mt-1.5 flex justify-between gap-3 text-xs text-ink-faint">
+                  <span>{field.helpText}</span>
+                  <span className="tabular-nums">
+                    {value.length}/{field.maxLength}
+                  </span>
+                </p>
+              </div>
+            );
+          })}
+          {fieldError && (
+            <p role="alert" className="text-sm text-clay">
+              {fieldError}
+            </p>
+          )}
+        </div>
+      )}
+
       <button
         type="button"
-        onClick={() => selected && add(selected.id)}
+        onClick={() => {
+          if (!selected) return;
+          if (wantsPersonalisation) {
+            const missing = personalisationFields.find(
+              (f) => f.required && !(personalisation[f.id] ?? "").trim(),
+            );
+            // The server checks this too; this is just a faster, kinder message.
+            if (missing) {
+              setFieldError(`${missing.label} is required.`);
+              return;
+            }
+          }
+          add(selected.id, 1, wantsPersonalisation ? personalisation : undefined);
+        }}
         disabled={soldOut || isPending}
         className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-clay px-8 py-4 text-sm font-medium text-white transition-colors hover:bg-clay-dark disabled:cursor-not-allowed disabled:bg-line-strong disabled:text-ink-faint sm:w-auto"
       >
