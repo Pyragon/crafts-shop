@@ -1,15 +1,21 @@
 import type { Metadata } from "next";
-import { ComingSoon } from "@/components/ComingSoon";
+import { CartPageContents } from "@/components/CartPageContents";
 
 export const metadata: Metadata = {
   title: "Cart",
-  description: "Your basket will live here once the catalogue exists to fill it.",
+  description: "Your cart.",
+  // A personal, per-visitor page — nothing for a crawler to index.
+  robots: { index: false, follow: false },
 };
 
-export default function Page() {
+export default function CartPage() {
+  // Contents come from the cart context, which the layout seeds with
+  // server-loaded data — so the first paint is already correct rather than
+  // flashing an empty cart while the client catches up.
   return (
-    <ComingSoon title="Cart" phase="Phase 2">
-      <p>Your basket will live here once the catalogue exists to fill it.</p>
-    </ComingSoon>
+    <div className="mx-auto max-w-6xl px-4 py-12 sm:px-6 lg:py-16">
+      <h1 className="mb-8 font-display text-4xl text-ink sm:text-5xl">Cart</h1>
+      <CartPageContents />
+    </div>
   );
 }

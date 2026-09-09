@@ -47,6 +47,12 @@ npm run db:reset   # drop, re-migrate, re-seed
 The seed leaves one product in `DRAFT` on purpose, as a standing check that
 unpublished products never reach the storefront.
 
+> **After changing the schema, restart the dev server.** The Prisma client is
+> cached on `globalThis` to survive HMR, so a regenerated client is not picked
+> up by a running process. The symptom is misleading: `Cannot read properties
+> of undefined (reading 'create')`, because the cached client predates the new
+> model.
+
 Other scripts:
 
 ```sh
@@ -177,8 +183,10 @@ src/
   proxy.ts           pre-launch gate (Next 16's middleware convention)
   lib/
     site.ts          BRANDING — shop name, tagline, nav, socials
-    db.ts            Prisma client singleton
+    db.ts            Prisma client singleton (server-only)
     catalog.ts       catalogue queries (always filtered to PUBLISHED)
+    cart.ts          cart persistence; stock is enforced here, not client-side
+    swatch.ts        placeholder colours — dependency-free, safe for clients
     ip-allowlist.ts  CIDR matching for the gate
     format.ts        price/date formatting
     placeholder-data.ts   temporary content, replaced by the DB in Phase 1
@@ -195,6 +203,14 @@ tags, header, footer and (later) emails.
 - **Prices are integer cents.** Never floats — use `formatPrice()` to display.
 - **Storefront queries go through `@/lib/catalog`**, which filters to
   `PUBLISHED` in one place. Don't query products directly from a page.
+- **Never import `@/lib/db` from a client component.** It pulls
+  `better-sqlite3` into the browser bundle and fails with an opaque
+  module-not-found. `db.ts` imports `server-only` so this fails loudly and
+  names the real cause. Shared pure helpers belong in their own module — see
+  `swatch.ts`.
+- **The cart is server-authoritative.** The client sends an id and a desired
+  quantity; the server decides what happens against live stock, clamping
+  rather than trusting.
 - **Mobile first.** Every feature is checked at 360px before it's called done.
 - Placeholder product artwork is a deterministic gradient derived from the
   slug; real photography arrives with uploads in Phase 7.

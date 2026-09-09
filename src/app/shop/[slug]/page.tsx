@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductCard, ProductThumb } from "@/components/ProductCard";
-import { ArrowIcon } from "@/components/icons";
+import { AddToCartButton } from "@/components/AddToCartButton";
 import {
   getAllProductSlugs,
   getProductBySlug,
@@ -148,21 +148,9 @@ export default async function ProductPage({
             )}
           </p>
 
-          {/* Wired up in Phase 2. Disabled rather than hidden so the layout
-              doesn't shift when it becomes real. */}
-          <button
-            type="button"
-            disabled
-            aria-disabled
-            title="The cart arrives in the next phase"
-            className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-clay px-8 py-4 text-sm font-medium text-white transition-colors disabled:cursor-not-allowed disabled:bg-line-strong disabled:text-ink-faint sm:w-auto"
-          >
-            {soldOut ? "Sold out" : "Add to cart"}
-            {!soldOut && <ArrowIcon width={16} height={16} />}
-          </button>
+          <AddToCartButton productId={product.id} soldOut={soldOut} />
           <p className="mt-2 text-xs text-ink-faint">
-            Checkout is still being built — this button comes alive in the next
-            phase.
+            Checkout arrives in a later phase; for now this fills the cart.
           </p>
 
           {product.description && (

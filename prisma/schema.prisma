@@ -40,33 +40,34 @@ model Category {
 }
 
 model Product {
-  id          String        @id @default(cuid())
-  slug        String        @unique
+  id          String  @id @default(cuid())
+  slug        String  @unique
   name        String
   /// Short line used on cards and in listings.
   blurb       String
   /// Long form copy for the product page.
   description String?
 
-  priceCents  Int
+  priceCents     Int
   /// Optional "was" price. When set and higher, the product reads as on sale.
   compareAtCents Int?
 
   /// Optional human-facing stock code for the maker's own records.
-  sku         String?       @unique
-  stock       Int           @default(0)
+  sku   String? @unique
+  stock Int     @default(0)
 
   status      ProductStatus @default(DRAFT)
   featured    Boolean       @default(false)
   publishedAt DateTime?
 
-  categoryId  String?
-  category    Category?     @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryId String?
+  category   Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  images      ProductImage[]
+  images    ProductImage[]
+  cartItems CartItem[]
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status, publishedAt])
   @@index([categoryId])
@@ -74,22 +75,58 @@ model Product {
 }
 
 model ProductImage {
-  id        String   @id @default(cuid())
+  id        String  @id @default(cuid())
   productId String
-  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   /// Storage location is deliberately just a string — local path now, object
   /// storage later, without a schema change.
-  url       String
+  url      String
   /// Required: an image with no alt text is an accessibility and SEO defect,
   /// so the admin form will have to collect it.
-  alt       String
-  width     Int?
-  height    Int?
+  alt      String
+  width    Int?
+  height   Int?
   /// 0 is the primary image shown on cards.
-  position  Int      @default(0)
+  position Int    @default(0)
 
   createdAt DateTime @default(now())
 
   @@index([productId, position])
+}
+
+/// A cart is identified by an opaque token in an httpOnly cookie. `userId` is
+/// unused until accounts exist (Phase 3) but is modelled now so signing in can
+/// merge an anonymous cart into the user's own without a migration.
+model Cart {
+  id     String  @id @default(cuid())
+  /// Opaque value stored in the cart cookie.
+  token  String  @unique
+  userId String?
+
+  items CartItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([updatedAt])
+}
+
+model CartItem {
+  id     String @id @default(cuid())
+  cartId String
+  cart   Cart   @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  quantity Int @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// One row per product per cart; adding again bumps the quantity.
+  @@unique([cartId, productId])
+  @@index([productId])
 }

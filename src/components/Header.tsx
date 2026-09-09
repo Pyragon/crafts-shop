@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { site } from "@/lib/site";
 import { CartIcon, CloseIcon, MenuIcon, SearchIcon, UserIcon } from "./icons";
+import { useCart } from "./CartProvider";
 
 export function Header() {
   const [open, setOpen] = useState(false);
@@ -12,8 +13,8 @@ export function Header() {
   const panelRef = useRef<HTMLDivElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
 
-  // Phase 2 replaces this with the real cart count.
-  const cartCount = 0;
+  const { cart, open: openCart } = useCart();
+  const cartCount = cart.count;
 
   // Close the drawer whenever navigation happens. Adjusting state during
   // render (rather than in an effect) is React's recommended pattern here —
@@ -113,9 +114,15 @@ export function Header() {
             >
               <UserIcon />
             </Link>
+            {/* Still a real link, so it works without JavaScript; with JS the
+                click is intercepted to open the drawer instead. */}
             <Link
               href="/cart"
-              aria-label={`Cart, ${cartCount} items`}
+              onClick={(e) => {
+                e.preventDefault();
+                openCart();
+              }}
+              aria-label={`Cart, ${cartCount} ${cartCount === 1 ? "item" : "items"}`}
               className="relative rounded-full p-2 text-ink transition-colors hover:bg-paper-sunk"
             >
               <CartIcon />

@@ -1,29 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { isNew, type CatalogProduct } from "@/lib/catalog";
+import { swatchFor } from "@/lib/swatch";
 import { formatPrice } from "@/lib/format";
-
-/**
- * Placeholder artwork until real photography exists (uploads arrive with the
- * admin in Phase 7). The gradient is derived from the slug so each product
- * keeps a stable, distinct colour instead of changing on every render.
- */
-const swatches = [
-  ["#e9d9c6", "#cbb094"],
-  ["#dce1d4", "#b3c0a6"],
-  ["#f0dcd2", "#d9ab93"],
-  ["#dfe2e8", "#b4bcc9"],
-  ["#eee2cf", "#d3bd93"],
-  ["#e6d7dd", "#c2a2b0"],
-];
-
-export function swatchFor(slug: string) {
-  let hash = 0;
-  for (let i = 0; i < slug.length; i++) {
-    hash = (hash * 31 + slug.charCodeAt(i)) >>> 0;
-  }
-  return swatches[hash % swatches.length];
-}
 
 export function ProductThumb({
   product,

@@ -53,15 +53,22 @@ changes, so it is worth deciding before Phase 4 rather than after.
 - [ ] Canonical/noindex handling for sorted and filtered listing URLs —
       `?sort=` variants are duplicate content
 
-## Phase 2 — Cart
+## Phase 2 — Cart  ✅ COMPLETE
 
-- [ ] Cart persistence model (cookie-backed cart id + DB rows, survives refresh)
-- [ ] Add to cart / update quantity / remove line
-- [ ] Cart drawer (slide-over) + full `/cart` page
-- [ ] Header cart badge with live item count
-- [ ] Subtotal, shipping estimate, tax placeholder
-- [ ] Merge anonymous cart into user cart on login
-- [ ] Stock validation on quantity change
+- [x] Cart persistence — httpOnly cookie token + DB rows, survives refresh
+- [x] Add to cart / update quantity / remove line (Server Actions)
+- [x] Cart drawer (slide-over) + full `/cart` page
+- [x] Header cart badge with live item count
+- [x] Subtotal + free-shipping threshold; shipping/tax deferred to checkout
+- [~] `mergeCartIntoUser()` written and ready — called from sign-in in Phase 3
+- [x] Stock validation server-side (clamps, never trusts the client)
+
+### Known limits
+
+- Quantity changes need JavaScript. The cart page and drawer render correct
+  contents server-side, and the header cart icon is a real link, so nothing is
+  broken without JS — but the +/- controls are inert. Worth a plain form
+  fallback if it ever matters.
 
 ## Phase 3 — Accounts & auth
 

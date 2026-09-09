@@ -1,3 +1,8 @@
+// Importing this from a client component pulls better-sqlite3 into the
+// browser bundle and fails with an opaque module-not-found. This makes that
+// mistake fail immediately, naming the real cause.
+import "server-only";
+
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaClient } from "@prisma/client";
 

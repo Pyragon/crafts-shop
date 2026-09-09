@@ -4,6 +4,9 @@ import { Fraunces, Inter } from "next/font/google";
 import { site } from "@/lib/site";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { CartProvider } from "@/components/CartProvider";
+import { CartDrawer } from "@/components/CartDrawer";
+import { getCart } from "@/lib/cart";
 import "./globals.css";
 
 const fraunces = Fraunces({
@@ -76,7 +79,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             {children}
           </main>
         ) : (
-          <>
+          // The cart is only loaded for visitors who can actually shop; a
+          // gated visitor shouldn't cost a cart lookup.
+          <CartProvider initialCart={await getCart()}>
             <a
               href="#main"
               className="skip-link rounded-full bg-ink px-4 py-2 text-sm text-paper"
@@ -88,7 +93,8 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               {children}
             </main>
             <Footer />
-          </>
+            <CartDrawer />
+          </CartProvider>
         )}
       </body>
     </html>
