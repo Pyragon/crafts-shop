@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { Fraunces, Inter } from "next/font/google";
 import { site } from "@/lib/site";
 import { Header } from "@/components/Header";
@@ -52,21 +53,43 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // While the site is gated, the coming-soon page stands alone — shop nav and
+  // footer would only advertise pages nobody can reach yet. The proxy marks
+  // those requests with a header.
+  //
+  // The env check short-circuits deliberately: once SITE_LOCKED=false,
+  // headers() is never called, so pages go back to being statically
+  // prerendered instead of forced dynamic.
+  const gateEnabled = process.env.SITE_LOCKED !== "false";
+  const locked =
+    gateEnabled && (await headers()).get("x-site-locked") === "1";
+
   return (
     <html
       lang="en"
       className={`${fraunces.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <a href="#main" className="skip-link rounded-full bg-ink px-4 py-2 text-sm text-paper">
-          Skip to content
-        </a>
-        <Header />
-        <main id="main" className="flex-1">
-          {children}
-        </main>
-        <Footer />
+        {locked ? (
+          <main id="main" className="flex-1">
+            {children}
+          </main>
+        ) : (
+          <>
+            <a
+              href="#main"
+              className="skip-link rounded-full bg-ink px-4 py-2 text-sm text-paper"
+            >
+              Skip to content
+            </a>
+            <Header />
+            <main id="main" className="flex-1">
+              {children}
+            </main>
+            <Footer />
+          </>
+        )}
       </body>
     </html>
   );

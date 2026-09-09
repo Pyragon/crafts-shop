@@ -22,6 +22,14 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[?]` needs a decision 
 - [x] Placeholder pages for every nav route + custom 404 (so nothing dead-ends)
 - [x] `git init`, first commit, pushed to Pyragon/crafts-shop (SSH auth set up)
 
+## Phase 0.5 — Pre-launch gate  ✅ COMPLETE
+
+- [x] `/coming-soon` page (standalone, no shop chrome, `noindex`)
+- [x] Gate everyone except allowed IPs (loopback / LAN / tailnet)
+- [x] `?preview=<token>` cookie bypass for phones and Cloudflare
+- [x] `SITE_LOCKED=false` launch switch, restores static prerendering
+- [ ] Wire the notify-me form to a real mailing list (with Phase 5)
+
 ## Phase 1 — Product catalog  ← NEXT
 
 - [ ] Choose DB + ORM — planning on **Prisma + SQLite** for dev, Postgres for prod
@@ -168,5 +176,5 @@ Useful addresses for this machine:
 | 3 | Email provider for receipts & password resets | open |
 | 4 | Blog authoring: MDX in repo vs. admin editor | open |
 | 5 | Image hosting for product photos | open |
-| 6 | Domain name | open |
+| 6 | Domain name — going through Cloudflare, origin `24.108.198.130` | in progress |
 | 7 | Analytics provider | open |

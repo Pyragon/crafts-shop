@@ -69,6 +69,31 @@ Then:
 npm run dev:public   # binds 0.0.0.0:80
 ```
 
+## Pre-launch gate
+
+While `SITE_LOCKED` is not `"false"`, everyone sees `/coming-soon` instead of
+the shop. Two ways to get through:
+
+1. **By IP** — loopback, LAN (`10/8`, `192.168/16`, `172.16/12`) and the
+   tailnet (`100.64/10`) are allowed by default. Override with
+   `SITE_ALLOWED_IPS`.
+2. **By preview token** — visit any URL once with `?preview=<SITE_PREVIEW_TOKEN>`.
+   That sets an HttpOnly cookie good for six months and strips the token from
+   the URL. This is the one to use on a phone over cellular or through
+   Cloudflare, where the IP moves around.
+
+The gated response carries `X-Robots-Tag: noindex, nofollow` so a placeholder
+never gets indexed as the shop's real content.
+
+**To launch:** set `SITE_LOCKED=false`. That also restores static prerendering
+— while the gate is on, the root layout reads request headers to decide
+whether to draw the shop chrome, which forces every page to render on demand.
+
+> This is a "not open yet" sign, not access control. The forwarded IP headers
+> it trusts can be spoofed by anyone hitting the origin directly instead of
+> going through Cloudflare. Anything that must genuinely stay private needs
+> real auth or a firewall limited to Cloudflare's ranges.
+
 ## Layout
 
 ```
@@ -78,8 +103,10 @@ src/
     page.tsx         homepage
     globals.css      design tokens + base styles
   components/        Header, Footer, ProductCard, icons
+  proxy.ts           pre-launch gate (Next 16's middleware convention)
   lib/
     site.ts          BRANDING — shop name, tagline, nav, socials
+    ip-allowlist.ts  CIDR matching for the gate
     format.ts        price/date formatting
     placeholder-data.ts   temporary content, replaced by the DB in Phase 1
 ```
