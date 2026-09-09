@@ -20,6 +20,13 @@
 (app) {
 	encode zstd gzip
 
+	# We are serving a dev server through Cloudflare, and Next's dev chunks go
+	# out with max-age=14400. Cloudflare happily caches that, so an edit here
+	# can show up as a stale page on a phone hours later — and debugging that
+	# wastes far more time than the bandwidth saves. Force revalidation while
+	# the site is in development; revisit when this is a production build.
+	header /_next/* Cache-Control "no-store, must-revalidate"
+
 	reverse_proxy 127.0.0.1:3000 {
 		# Keep the original Host so Next sees the real domain, and preserve the
 		# websocket upgrade used by dev HMR.

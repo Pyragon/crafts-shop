@@ -23,15 +23,21 @@ export default async function SearchPage({
           <label htmlFor="q" className="sr-only">
             Search products
           </label>
-          <div className="relative flex-1">
-            <SearchIcon className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-faint" />
+          {/* Laid out as a flex row rather than an absolutely positioned icon
+              over a padded input. `type="search"` carries native styling that
+              browsers — iOS Safari especially — apply on their own terms,
+              overriding padding and imposing their own metrics, which leaves an
+              overlaid icon sitting in the wrong place. Flex sidesteps it, and
+              appearance-none strips the native chrome. */}
+          <div className="flex flex-1 items-center gap-3 rounded-full border border-line-strong bg-paper-raised px-4 focus-within:border-clay">
+            <SearchIcon className="shrink-0 text-ink-faint" />
             <input
               id="q"
               name="q"
               type="search"
               defaultValue={query}
               placeholder="Mugs, indigo, weaving…"
-              className="w-full rounded-full border border-line-strong bg-paper-raised py-3 pl-11 pr-4 text-sm text-ink placeholder:text-ink-faint"
+              className="w-full appearance-none border-0 bg-transparent py-3 text-sm text-ink outline-none placeholder:text-ink-faint [&::-webkit-search-cancel-button]:appearance-none"
             />
           </div>
           <button
