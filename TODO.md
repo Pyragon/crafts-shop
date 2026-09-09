@@ -118,9 +118,10 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[?]` needs a decision 
 
 - [ ] Postgres migration path
 - [ ] Environment/secret management, `.env.example`
-- [ ] HTTPS + real domain  `[?]` does Cody have a domain yet?
-- [ ] Reverse proxy (Caddy/nginx) in front of Next
+- [x] HTTPS + real domain — mabrowns.ca / mabrown.ca, Full (strict)
+- [x] Reverse proxy (Caddy) in front of Next
 - [ ] Automated DB backups
+- [ ] Move to a VPS for production (Cody's plan; retires the dynamic-IP problem)
 - [ ] Error monitoring (Sentry)
 - [ ] Accessibility audit (keyboard nav, contrast, screen reader)
 - [ ] Legal pages: privacy, terms, returns/refunds, shipping policy
@@ -166,7 +167,7 @@ Useful addresses for this machine:
 - [x] `npm run dev:public` bound to `0.0.0.0:80` and serving
 - [x] Public access via Cloudflare at https://mabrowns.ca (port 80 forwarded)
 - [x] Caddy terminating TLS with Cloudflare Origin CA certs for both domains
-- [ ] Flip Cloudflare SSL mode to Full (strict) on both zones (origin side is ready)
+- [x] Cloudflare SSL mode set to Full (strict) on both zones, verified end to end
 - [ ] Serve `next build && next start` instead of `next dev` before launch
 
 ---
