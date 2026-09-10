@@ -3,6 +3,7 @@ import Link from "next/link";
 import { requireUser } from "@/lib/require-auth";
 import { getOrdersForUser } from "@/lib/orders";
 import { formatPrice } from "@/lib/format";
+import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { ArrowIcon } from "@/components/icons";
 
 export const metadata: Metadata = {
@@ -46,13 +47,16 @@ export default async function OrdersPage() {
       ) : (
         <ul className="mt-10 space-y-4">
           {orders.map((order) => (
-            <li
-              key={order.id}
-              className="rounded-2xl border border-line bg-paper-raised p-6"
-            >
+            <li key={order.id}>
+              <Link
+                href={`/account/orders/${order.id}`}
+                className="group block rounded-2xl border border-line bg-paper-raised p-6 transition-colors hover:border-line-strong"
+              >
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <div>
-                  <p className="font-display text-lg text-ink">{order.number}</p>
+                  <p className="font-display text-lg text-ink transition-colors group-hover:text-clay">
+                    {order.number}
+                  </p>
                   <p className="mt-0.5 text-xs text-ink-faint">
                     {order.createdAt.toLocaleDateString("en-CA", {
                       year: "numeric",
@@ -61,13 +65,14 @@ export default async function OrdersPage() {
                     })}
                   </p>
                 </div>
-                <div className="text-right">
+                <div className="flex flex-col items-end gap-2">
                   <p className="tabular-nums text-ink">
                     {formatPrice(order.totalCents)}
                   </p>
-                  <p className="mt-0.5 text-xs capitalize text-sage">
-                    {order.fulfilmentStatus.replace(/_/g, " ").toLowerCase()}
-                  </p>
+                  <OrderStatusBadge
+                    paymentStatus={order.paymentStatus}
+                    fulfilmentStatus={order.fulfilmentStatus}
+                  />
                 </div>
               </div>
 
@@ -87,23 +92,17 @@ export default async function OrdersPage() {
                 ))}
               </ul>
 
-              {order.trackingNumber && (
-                <p className="mt-4 text-sm text-ink-soft">
-                  {order.carrier ? `${order.carrier}: ` : "Tracking: "}
-                  {order.trackingUrl ? (
-                    <a
-                      href={order.trackingUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-clay underline underline-offset-4"
-                    >
-                      {order.trackingNumber}
-                    </a>
-                  ) : (
+                {order.trackingNumber && (
+                  <p className="mt-4 text-sm text-ink-soft">
+                    {order.carrier ? `${order.carrier}: ` : "Tracking: "}
                     <span className="text-ink">{order.trackingNumber}</span>
-                  )}
+                  </p>
+                )}
+
+                <p className="mt-4 text-xs font-medium text-clay">
+                  View order &amp; invoice →
                 </p>
-              )}
+              </Link>
             </li>
           ))}
         </ul>

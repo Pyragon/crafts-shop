@@ -90,3 +90,21 @@ body {
 .skip-link:focus {
   transform: translateY(0);
 }
+
+/* Printing an order detail page produces the invoice. Strip the furniture and
+   let the browser make the PDF, rather than carrying a PDF library. */
+@media print {
+  body {
+    background: #fff;
+    background-image: none;
+    color: #000;
+  }
+  header[class*="sticky"],
+  footer,
+  .skip-link {
+    display: none !important;
+  }
+  a[href]::after {
+    content: "";
+  }
+}

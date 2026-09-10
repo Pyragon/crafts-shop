@@ -127,7 +127,7 @@ Still to add in Phase 7's admin UI:
       banner on the account page. Deliberately non-blocking
 - [x] `/account` dashboard
 - [x] `/account/orders` — empty state; real orders arrive with Phase 4
-- [ ] `/account/orders/[id]` order detail — waiting on orders existing
+- [x] `/account/orders/[id]` order detail
 - [x] `/account/addresses` — model and list; adding happens at checkout
 - [x] Route protection via `requireUser()` in pages, not the proxy — the proxy
       runs on every request, and a session read there is a query per asset
@@ -246,7 +246,8 @@ saying their order moved to `READY_TO_SHIP`.
 
 ### Still to do on orders
 
-- [ ] `/account/orders/[id]` detail page (list view exists)
+- [x] `/account/orders/[id]` detail page — items, personalisation, price
+      breakdown, address, tracking, progress timeline, printable as an invoice
 - [ ] **Sales tax.** Not calculated, and the checkout says so. Canadian tax is
       destination-based with per-province rates and registration thresholds;
       guessing one rate would be worse than charging none. Stripe Tax is the

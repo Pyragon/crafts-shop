@@ -329,6 +329,41 @@ export async function getOrderByPaymentIntent(
   });
 }
 
+/**
+ * One order, scoped to its owner.
+ *
+ * Scoped in the query rather than fetched-then-checked: a missing order and
+ * someone else's order return the same null, so the page cannot be used to
+ * discover which order numbers exist.
+ */
+export async function getOrderForUser(
+  orderId: string,
+  userId: string,
+): Promise<FullOrder | null> {
+  return db.order.findFirst({
+    where: {
+      id: orderId,
+      userId,
+      paymentStatus: { not: PaymentStatus.PENDING },
+    },
+    include: orderInclude,
+  });
+}
+
+/** Timeline entries a customer should see. Internal notes never appear. */
+export function customerVisibleEvents(order: FullOrder) {
+  const shown: OrderEventType[] = [
+    OrderEventType.CREATED,
+    OrderEventType.PAYMENT_SUCCEEDED,
+    OrderEventType.SHIPPED,
+    OrderEventType.DELIVERED,
+    OrderEventType.REFUNDED,
+  ];
+  return order.events
+    .filter((e) => shown.includes(e.type))
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+}
+
 export async function getOrdersForUser(userId: string): Promise<FullOrder[]> {
   return db.order.findMany({
     where: { userId, paymentStatus: { not: PaymentStatus.PENDING } },
