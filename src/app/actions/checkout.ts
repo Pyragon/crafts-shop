@@ -3,7 +3,7 @@
 import { getCurrentUser } from "@/lib/auth";
 import { createPendingOrder, attachPaymentIntent, type ShippingDetails } from "@/lib/orders";
 import { stripe, stripeConfigured } from "@/lib/stripe";
-import { isShippingOption } from "@/lib/shipping";
+import { canShipTo, isShippingMethod } from "@/lib/shipping";
 
 export type CheckoutStart =
   | { ok: true; clientSecret: string; orderNumber: string; totalCents: number }
@@ -31,8 +31,15 @@ export async function startCheckout(formData: FormData): Promise<CheckoutStart> 
   }
 
   const shippingMethod = required(formData, "shippingMethod");
-  if (!isShippingOption(shippingMethod)) {
+  if (!isShippingMethod(shippingMethod)) {
     return { ok: false, error: "Choose a shipping option." };
+  }
+
+  // Checked here as well as in createPendingOrder: the country drives the
+  // rate, so a country we don't serve must never reach pricing.
+  const country = (required(formData, "country") || "CA").toUpperCase();
+  if (!canShipTo(country)) {
+    return { ok: false, error: "We don't ship to that country yet." };
   }
 
   const details: ShippingDetails = {
@@ -43,7 +50,7 @@ export async function startCheckout(formData: FormData): Promise<CheckoutStart> 
     city: required(formData, "city"),
     region: required(formData, "region") || undefined,
     postalCode: required(formData, "postalCode"),
-    country: required(formData, "country") || "CA",
+    country,
     phone: required(formData, "phone") || undefined,
     shippingMethod,
   };

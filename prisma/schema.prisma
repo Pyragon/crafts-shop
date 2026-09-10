@@ -456,6 +456,13 @@ model Order {
   /// Private to the shop. Never shown to the customer.
   internalNotes String?
 
+  /// Why an order was refunded or cancelled.
+  ///
+  /// Required by the admin when refunding, and shown to the customer in the
+  /// notification — "your order was cancelled" with no reason generates a
+  /// support email every single time.
+  cancellationReason String?
+
   items  OrderItem[]
   events OrderEvent[]
 

@@ -165,6 +165,34 @@ Still to add in Phase 7's admin UI:
 - [x] Order confirmation email via Resend
 - [x] Webhook with signature verification, idempotent, exempt from the gate
 
+### Shipping
+
+Flat rates by destination zone rather than carrier-calculated. For small
+parcels that is predictable, and it avoids an integration whose outage would
+take checkout down.
+
+| Zone | Standard | Express |
+|---|---|---|
+| Canada | $8.00, free over $75 | $18.00 |
+| United States | $18.00 | $35.00 |
+| International | $35.00 | $65.00 |
+
+**Only Canada is enabled.** The other zones have rates defined but are not
+offered, so enabling them is a one-line change with the pricing already
+thought through. Previously the checkout offered the United States while
+charging the Canadian rate — a US order would have shipped underpriced.
+
+The free-shipping threshold is domestic only: express is never free, or the
+threshold would subsidise the expensive option, and abroad the postage is too
+large to give away. Unknown countries fall to the international zone, never
+domestic, so a mistake never underprices.
+
+- [ ] Enable US and international zones when MaBrown is ready to post abroad
+- [ ] Revisit carrier-calculated rates (Canada Post API, EasyPost, Shippo) if
+      international becomes a real share of orders — `rateFor` is the only
+      thing that would need swapping
+- [ ] Customs/CN22 declarations will be needed before shipping internationally
+
 ### Order management data model
 
 Built ready for the admin, so Phase 7 is UI over existing fields:
@@ -195,8 +223,11 @@ saying their order moved to `READY_TO_SHIP`.
       destination-based with per-province rates and registration thresholds;
       guessing one rate would be worse than charging none. Stripe Tax is the
       likely answer. **Must be resolved before launch.**
-- [ ] Refunds from the admin (the webhook already handles `charge.refunded`,
-      including partial refunds)
+- [ ] **Refunds from the admin must ask for a reason.** The reason is required,
+      stored on `cancellationReason`, written to the order timeline, and shown
+      to the customer in the notification — "your order was cancelled" with no
+      reason generates a support email every single time. A full refund
+      cancels the order; a partial one does not.
 - [ ] Admin UI for the fulfilment fields below — the data model is ready
 - [ ] Switch to live Stripe keys, and re-point the webhook at the live endpoint
 

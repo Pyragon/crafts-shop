@@ -12,8 +12,11 @@ import { useCart } from "./CartProvider";
 import { formatPrice } from "@/lib/format";
 import {
   FREE_SHIPPING_THRESHOLD_CENTS,
-  SHIPPING_OPTIONS,
+  SHIPPING_COUNTRIES,
+  SHIPPING_METHODS,
+  methodDescription,
   shippingCostCents,
+  zoneFor,
 } from "@/lib/shipping";
 import { startCheckout } from "@/app/actions/checkout";
 
@@ -35,13 +38,17 @@ type Props = {
 
 export function CheckoutForm({ publishableKey, defaultEmail }: Props) {
   const { cart } = useCart();
-  const [shippingMethod, setShippingMethod] = useState(SHIPPING_OPTIONS[0].id);
+  const [shippingMethod, setShippingMethod] = useState(SHIPPING_METHODS[0].id);
+  // Rates depend on destination, so the country lives in state rather than
+  // being read only on submit — otherwise the summary would lie until you paid.
+  const [country, setCountry] = useState(SHIPPING_COUNTRIES[0].code);
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  const shipping = shippingCostCents(shippingMethod, cart.subtotalCents);
+  const shipping = shippingCostCents(shippingMethod, cart.subtotalCents, country);
+  const domestic = zoneFor(country) === "CA";
   const total = cart.subtotalCents + shipping;
 
   const stripe = useMemo(
@@ -150,10 +157,24 @@ export function CheckoutForm({ publishableKey, defaultEmail }: Props) {
                 </div>
                 <div>
                   <label htmlFor="country" className={label}>Country</label>
-                  <select id="country" name="country" defaultValue="CA" className={field}>
-                    <option value="CA">Canada</option>
-                    <option value="US">United States</option>
+                  <select
+                    id="country"
+                    name="country"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    className={field}
+                  >
+                    {SHIPPING_COUNTRIES.map((c) => (
+                      <option key={c.code} value={c.code}>
+                        {c.name}
+                      </option>
+                    ))}
                   </select>
+                  {SHIPPING_COUNTRIES.length === 1 && (
+                    <p className="mt-1.5 text-xs text-ink-faint">
+                      Shipping within Canada only for now.
+                    </p>
+                  )}
                 </div>
                 <div className="sm:col-span-2">
                   <label htmlFor="phone" className={label}>
@@ -170,8 +191,12 @@ export function CheckoutForm({ publishableKey, defaultEmail }: Props) {
             <section>
               <h2 className="font-display text-xl text-ink">Delivery</h2>
               <div className="mt-4 space-y-3">
-                {SHIPPING_OPTIONS.map((option) => {
-                  const cost = shippingCostCents(option.id, cart.subtotalCents);
+                {SHIPPING_METHODS.map((option) => {
+                  const cost = shippingCostCents(
+                    option.id,
+                    cart.subtotalCents,
+                    country,
+                  );
                   return (
                     <label
                       key={option.id}
@@ -191,7 +216,7 @@ export function CheckoutForm({ publishableKey, defaultEmail }: Props) {
                       <span className="flex-1">
                         <span className="block text-sm text-ink">{option.label}</span>
                         <span className="block text-xs text-ink-faint">
-                          {option.description}
+                          {methodDescription(option.id, country)}
                         </span>
                       </span>
                       <span className="text-sm tabular-nums text-ink">
@@ -272,7 +297,7 @@ export function CheckoutForm({ publishableKey, defaultEmail }: Props) {
             </div>
           </dl>
 
-          {cart.subtotalCents < FREE_SHIPPING_THRESHOLD_CENTS && (
+          {domestic && cart.subtotalCents < FREE_SHIPPING_THRESHOLD_CENTS && (
             <p className="mt-3 rounded-lg bg-paper-sunk px-3 py-2 text-xs text-ink-soft">
               {formatPrice(FREE_SHIPPING_THRESHOLD_CENTS - cart.subtotalCents)} more
               for free standard shipping.

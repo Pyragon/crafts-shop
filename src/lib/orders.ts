@@ -7,7 +7,7 @@ import {
 } from "@prisma/client";
 import { db } from "./db";
 import { getCart, getCartToken } from "./cart";
-import { shippingCostCents, taxCents } from "./shipping";
+import { canShipTo, shippingCostCents, taxCents } from "./shipping";
 
 /**
  * Order creation and fulfilment.
@@ -55,10 +55,13 @@ async function nextOrderNumber(): Promise<string> {
   return `${prefix}${String(n).padStart(4, "0")}`;
 }
 
-export async function cartTotals(shippingMethod: string): Promise<OrderTotals> {
+export async function cartTotals(
+  shippingMethod: string,
+  countryCode: string,
+): Promise<OrderTotals> {
   const cart = await getCart();
   const subtotalCents = cart.subtotalCents;
-  const shipping = shippingCostCents(shippingMethod, subtotalCents);
+  const shipping = shippingCostCents(shippingMethod, subtotalCents, countryCode);
   const tax = taxCents();
   return {
     subtotalCents,
@@ -107,7 +110,11 @@ export async function createPendingOrder(
     }
   }
 
-  const totals = await cartTotals(details.shippingMethod);
+  if (!canShipTo(details.country)) {
+    return { ok: false, error: "We don't ship to that country yet." };
+  }
+
+  const totals = await cartTotals(details.shippingMethod, details.country);
 
   const order = await db.order.create({
     data: {
