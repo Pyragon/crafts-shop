@@ -356,13 +356,42 @@ model RateLimit {
   @@index([resetAt])
 }
 
-enum OrderStatus {
+/// Where the money is. Independent of whether anything has been made or sent —
+/// an order can be refunded after shipping, or paid and not yet started.
+enum PaymentStatus {
   /// Payment intent created, money not taken yet.
   PENDING
   PAID
-  FULFILLED
-  CANCELLED
+  PARTIALLY_REFUNDED
   REFUNDED
+  FAILED
+}
+
+/// Where the goods are.
+///
+/// IN_PRODUCTION exists because these are made to order — "we have started
+/// making it" is the single most common thing a customer wants to know, and
+/// without it the only honest answer is "paid, not shipped".
+enum FulfilmentStatus {
+  UNFULFILLED
+  IN_PRODUCTION
+  READY_TO_SHIP
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+/// Entries in an order's timeline, for the admin and for support questions.
+enum OrderEventType {
+  CREATED
+  PAYMENT_SUCCEEDED
+  PAYMENT_FAILED
+  STATUS_CHANGED
+  SHIPPED
+  DELIVERED
+  REFUNDED
+  NOTE
+  EMAIL_SENT
 }
 
 /// An order snapshots everything it needs.
@@ -382,7 +411,8 @@ model Order {
   /// Always captured, account or not. This is where the receipt goes.
   email  String
 
-  status OrderStatus @default(PENDING)
+  paymentStatus    PaymentStatus    @default(PENDING)
+  fulfilmentStatus FulfilmentStatus @default(UNFULFILLED)
 
   subtotalCents Int
   shippingCents Int    @default(0)
@@ -414,17 +444,27 @@ model Order {
   stripePaymentIntentId String?   @unique
   paidAt                DateTime?
   fulfilledAt           DateTime?
+  /// Carrier name as the maker knows it — "Canada Post", "UPS".
+  carrier               String?
   trackingNumber        String?
-  /// Anything the maker needs to remember about this one.
-  notes                 String?
+  /// Stored rather than derived: carriers change their URL formats, and a
+  /// stale pattern would break links on old orders.
+  trackingUrl           String?
 
-  items OrderItem[]
+  shippedAt     DateTime?
+  deliveredAt   DateTime?
+  /// Private to the shop. Never shown to the customer.
+  internalNotes String?
+
+  items  OrderItem[]
+  events OrderEvent[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([userId])
-  @@index([status, createdAt])
+  @@index([paymentStatus, createdAt])
+  @@index([fulfilmentStatus, createdAt])
   @@index([email])
 }
 
@@ -465,4 +505,26 @@ model OrderItemPersonalisation {
   value String
 
   @@index([orderItemId])
+}
+
+/// An order's timeline.
+///
+/// Every status change, email and note lands here, so the admin can answer
+/// "what happened to this order and when" without guessing from timestamps
+/// scattered across columns.
+model OrderEvent {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  type    OrderEventType
+  /// Human-readable summary, e.g. "Marked shipped via Canada Post".
+  message String
+
+  /// Who did it. Null for anything the system did on its own.
+  actorUserId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId, createdAt])
 }

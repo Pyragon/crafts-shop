@@ -5,10 +5,11 @@ import {
   clearCartForOrder,
   getOrderByPaymentIntent,
   markOrderPaid,
+  recordEvent,
 } from "@/lib/orders";
-import { sendOrderConfirmation } from "@/lib/email";
+import { sendOrderConfirmation, sendShopOrderAlert } from "@/lib/email";
 import { db } from "@/lib/db";
-import { OrderStatus } from "@prisma/client";
+import { OrderEventType, PaymentStatus } from "@prisma/client";
 
 /**
  * Stripe webhook — the source of truth for whether an order was paid.
@@ -55,7 +56,10 @@ export async function POST(request: Request) {
         if (result.ok && result.orderId && !result.alreadyPaid) {
           const order = await getOrderByPaymentIntent(intent.id);
           if (order) {
+            // Customer receipt and the shop's own copy. Sent independently so
+            // a failure to reach one cannot stop the other.
             await sendOrderConfirmation(order);
+            await sendShopOrderAlert(order);
             await clearCartForOrder(result.orderId).catch(() => {});
           }
         }
@@ -64,19 +68,40 @@ export async function POST(request: Request) {
 
       case "payment_intent.payment_failed": {
         const intent = event.data.object;
-        console.warn(
-          `[stripe] payment failed for ${intent.id}: ${intent.last_payment_error?.message ?? "unknown"}`,
-        );
+        const reason = intent.last_payment_error?.message ?? "unknown";
+        console.warn(`[stripe] payment failed for ${intent.id}: ${reason}`);
+        const failed = await getOrderByPaymentIntent(intent.id);
+        if (failed) {
+          await db.order.update({
+            where: { id: failed.id },
+            data: { paymentStatus: PaymentStatus.FAILED },
+          });
+          await recordEvent(failed.id, OrderEventType.PAYMENT_FAILED, `Payment failed: ${reason}`);
+        }
         break;
       }
 
       case "charge.refunded": {
         const charge = event.data.object;
         if (typeof charge.payment_intent === "string") {
-          await db.order.updateMany({
-            where: { stripePaymentIntentId: charge.payment_intent },
-            data: { status: OrderStatus.REFUNDED },
-          });
+          const refunded = await getOrderByPaymentIntent(charge.payment_intent);
+          if (refunded) {
+            // Stripe reports partial refunds through the same event.
+            const full = charge.amount_refunded >= charge.amount;
+            await db.order.update({
+              where: { id: refunded.id },
+              data: {
+                paymentStatus: full
+                  ? PaymentStatus.REFUNDED
+                  : PaymentStatus.PARTIALLY_REFUNDED,
+              },
+            });
+            await recordEvent(
+              refunded.id,
+              OrderEventType.REFUNDED,
+              `${full ? "Full" : "Partial"} refund of ${(charge.amount_refunded / 100).toFixed(2)}`,
+            );
+          }
         }
         break;
       }

@@ -165,6 +165,29 @@ Still to add in Phase 7's admin UI:
 - [x] Order confirmation email via Resend
 - [x] Webhook with signature verification, idempotent, exempt from the gate
 
+### Order management data model
+
+Built ready for the admin, so Phase 7 is UI over existing fields:
+
+- **Payment and fulfilment are separate.** An order can be refunded after
+  shipping, or paid and not yet started — one enum could not say both.
+  - Payment: `PENDING` `PAID` `PARTIALLY_REFUNDED` `REFUNDED` `FAILED`
+  - Fulfilment: `UNFULFILLED` `IN_PRODUCTION` `READY_TO_SHIP` `SHIPPED`
+    `DELIVERED` `CANCELLED`
+- `IN_PRODUCTION` exists because these are made to order — "have you started
+  making it" is the question customers actually ask.
+- Tracking: `carrier`, `trackingNumber`, `trackingUrl`, `shippedAt`,
+  `deliveredAt`. The URL is stored rather than derived, because carriers change
+  their URL formats and a stale pattern would break links on old orders.
+- `internalNotes` — private to the shop, never shown to the customer.
+- `OrderEvent` timeline: every status change, email and note, so the admin can
+  answer "what happened to this order and when" without inferring it from
+  scattered timestamps.
+
+Emails ready to wire to those transitions: `sendOrderShipped` (with tracking)
+and `sendOrderInProduction`. Only those two notify — nobody wants an email
+saying their order moved to `READY_TO_SHIP`.
+
 ### Still to do on orders
 
 - [ ] `/account/orders/[id]` detail page (list view exists)
@@ -172,7 +195,9 @@ Still to add in Phase 7's admin UI:
       destination-based with per-province rates and registration thresholds;
       guessing one rate would be worse than charging none. Stripe Tax is the
       likely answer. **Must be resolved before launch.**
-- [ ] Refunds from the admin (the webhook already handles `charge.refunded`)
+- [ ] Refunds from the admin (the webhook already handles `charge.refunded`,
+      including partial refunds)
+- [ ] Admin UI for the fulfilment fields below — the data model is ready
 - [ ] Switch to live Stripe keys, and re-point the webhook at the live endpoint
 
 ## Phase 5 — Blog / journal
@@ -247,8 +272,15 @@ each one is the kind of thing that is invisible until it costs money.
       Record: `_dmarc` → `v=DMARC1; p=none; rua=mailto:admin@mabrowns.ca`
       Cloudflare **DMARC Management** (free, needs Cloudflare DNS) charts these
       reports instead of mailing raw XML that nobody reads.
-- [ ] **Rotate the Resend API key** — the current one was pasted into a chat
-      transcript. Two clicks in Resend, then update `.env.local`.
+- [ ] **Rotate every credential pasted into a chat transcript.** All of these
+      were shared in conversation and should be replaced before launch:
+      - Resend API key
+      - Stripe secret key (`sk_test_…` now; the live one must never be pasted
+        anywhere)
+      - Stripe webhook signing secret — roll it from Workbench → Webhooks →
+        ⋯ → Roll secret, then update `.env.local`
+      Rotating is a couple of clicks each; the risk of not doing it is that a
+      transcript is a durable copy of a working credential.
 - [ ] Delete or re-password the `admin@mabrowns.ca` account created by testing.
 - [ ] Send a real order confirmation to a Gmail, Outlook and Yahoo address and
       confirm none land in spam.

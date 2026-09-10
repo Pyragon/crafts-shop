@@ -136,6 +136,11 @@ export async function sendEmailVerification(
   });
 }
 
+/** Where the shop's own copy of each order goes. */
+function shopOrderInbox(): string {
+  return process.env.SHOP_ORDER_EMAIL ?? "orders@mabrowns.ca";
+}
+
 type OrderForEmail = {
   number: string;
   email: string;
@@ -207,6 +212,113 @@ export async function sendOrderConfirmation(
       "",
       "Everything is made by hand in small batches, so allow a little time",
       "before it ships. You'll hear from us when it's on its way.",
+      "",
+      `— ${site.name}`,
+    ].join("\n"),
+  });
+}
+
+/**
+ * The shop's own copy of an order.
+ *
+ * Sent separately from the customer receipt rather than as a BCC, so the two
+ * can say different things — this one leads with what has to be made, and
+ * carries the internal reference rather than reassurance.
+ */
+export async function sendShopOrderAlert(
+  order: OrderForEmail,
+): Promise<DeliveryResult> {
+  const lines = order.items.flatMap((item) => {
+    const name = item.variantLabel
+      ? `${item.productName} — ${item.variantLabel}`
+      : item.productName;
+    return [
+      `  ${item.quantity} x ${name}`,
+      // Personalisation is indented and called out because getting it wrong
+      // means remaking the piece.
+      ...item.personalisation.map((p) => `      >> ${p.label}: ${p.value}`),
+    ];
+  });
+
+  const personalised = order.items.some((i) => i.personalisation.length > 0);
+
+  return deliver({
+    to: shopOrderInbox(),
+    subject: `New order ${order.number} — ${money(order.totalCents)}${personalised ? " (personalised)" : ""}`,
+    body: [
+      `Order ${order.number}`,
+      `Paid: ${money(order.totalCents)}  (goods ${money(order.subtotalCents)}, shipping ${money(order.shippingCents)})`,
+      `Customer: ${order.email}`,
+      "",
+      "To make:",
+      ...lines,
+      "",
+      ...(personalised
+        ? ["** This order includes personalisation — check the values above. **", ""]
+        : []),
+      `Ship (${order.shippingMethod ?? "standard"}):`,
+      `  ${order.shipName}`,
+      `  ${order.shipLine1}`,
+      ...(order.shipLine2 ? [`  ${order.shipLine2}`] : []),
+      `  ${order.shipCity}${order.shipRegion ? `, ${order.shipRegion}` : ""} ${order.shipPostalCode}`,
+      `  ${order.shipCountry}`,
+      "",
+      `Manage: ${baseUrl()}/admin/orders`,
+    ].join("\n"),
+  });
+}
+
+type ShippedOrder = OrderForEmail & {
+  carrier: string | null;
+  trackingNumber: string | null;
+  trackingUrl: string | null;
+};
+
+/** Sent when the maker marks an order shipped from the admin. */
+export async function sendOrderShipped(
+  order: ShippedOrder,
+): Promise<DeliveryResult> {
+  const tracking = order.trackingNumber
+    ? [
+        "",
+        `${order.carrier ?? "Tracking"}: ${order.trackingNumber}`,
+        ...(order.trackingUrl ? [order.trackingUrl] : []),
+      ]
+    : [];
+
+  return deliver({
+    to: order.email,
+    subject: `Order ${order.number} is on its way`,
+    body: [
+      "Good news — your order has shipped.",
+      "",
+      `Order number: ${order.number}`,
+      ...tracking,
+      "",
+      "Going to:",
+      `  ${order.shipName}`,
+      `  ${order.shipLine1}`,
+      ...(order.shipLine2 ? [`  ${order.shipLine2}`] : []),
+      `  ${order.shipCity}${order.shipRegion ? `, ${order.shipRegion}` : ""} ${order.shipPostalCode}`,
+      "",
+      `— ${site.name}`,
+    ].join("\n"),
+  });
+}
+
+/** Sent when the maker starts work — the question customers ask most. */
+export async function sendOrderInProduction(
+  order: OrderForEmail,
+): Promise<DeliveryResult> {
+  return deliver({
+    to: order.email,
+    subject: `Order ${order.number} is being made`,
+    body: [
+      "Your order has moved to the bench and is being made now.",
+      "",
+      `Order number: ${order.number}`,
+      "",
+      "You'll hear from us again when it ships.",
       "",
       `— ${site.name}`,
     ].join("\n"),

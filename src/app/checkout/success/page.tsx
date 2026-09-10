@@ -44,7 +44,7 @@ export default async function CheckoutSuccessPage({
   // The webhook marks the order paid, and it may land a moment after the
   // customer is redirected back. Saying "processing" is honest; claiming
   // failure would not be.
-  const settled = order.status !== "PENDING";
+  const settled = order.paymentStatus !== "PENDING";
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-14 sm:px-6 lg:py-20">

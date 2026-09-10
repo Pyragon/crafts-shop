@@ -223,6 +223,10 @@ leaving it there at launch means DMARC is published but not enforced.
 
 The API key is scoped to **sending only**; it cannot read or manage domains.
 
+Each order sends two separate messages — the customer's receipt and the shop's
+own copy to `orders@mabrowns.ca` — rather than one with a BCC, so a failure to
+reach one cannot stop the other, and the two can say different things.
+
 A provider failure is logged, never surfaced. The reset form returns the same
 answer whether or not an account exists, and "we couldn't send that" would
 undo it.

@@ -66,7 +66,7 @@ export default async function OrdersPage() {
                     {formatPrice(order.totalCents)}
                   </p>
                   <p className="mt-0.5 text-xs capitalize text-sage">
-                    {order.status.toLowerCase()}
+                    {order.fulfilmentStatus.replace(/_/g, " ").toLowerCase()}
                   </p>
                 </div>
               </div>
@@ -89,7 +89,19 @@ export default async function OrdersPage() {
 
               {order.trackingNumber && (
                 <p className="mt-4 text-sm text-ink-soft">
-                  Tracking: <span className="text-ink">{order.trackingNumber}</span>
+                  {order.carrier ? `${order.carrier}: ` : "Tracking: "}
+                  {order.trackingUrl ? (
+                    <a
+                      href={order.trackingUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-clay underline underline-offset-4"
+                    >
+                      {order.trackingNumber}
+                    </a>
+                  ) : (
+                    <span className="text-ink">{order.trackingNumber}</span>
+                  )}
                 </p>
               )}
             </li>

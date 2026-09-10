@@ -1,5 +1,10 @@
 import "server-only";
-import { OrderStatus, Prisma } from "@prisma/client";
+import {
+  FulfilmentStatus,
+  OrderEventType,
+  PaymentStatus,
+  Prisma,
+} from "@prisma/client";
 import { db } from "./db";
 import { getCart, getCartToken } from "./cart";
 import { shippingCostCents, taxCents } from "./shipping";
@@ -109,7 +114,7 @@ export async function createPendingOrder(
       number: await nextOrderNumber(),
       userId,
       email: details.email.trim().toLowerCase(),
-      status: OrderStatus.PENDING,
+      paymentStatus: PaymentStatus.PENDING,
       subtotalCents: totals.subtotalCents,
       shippingCents: totals.shippingCents,
       taxCents: totals.taxCents,
@@ -142,8 +147,10 @@ export async function createPendingOrder(
         })),
       },
     },
-    select: { id: true },
+    select: { id: true, number: true },
   });
+
+  await recordEvent(order.id, OrderEventType.CREATED, `Order ${order.number} created`);
 
   return { ok: true, orderId: order.id, totals };
 }
@@ -161,17 +168,17 @@ export async function markOrderPaid(
 ): Promise<{ ok: boolean; orderId?: string; alreadyPaid?: boolean }> {
   const order = await db.order.findUnique({
     where: { stripePaymentIntentId: paymentIntentId },
-    select: { id: true, status: true, items: true },
+    select: { id: true, paymentStatus: true, items: true },
   });
   if (!order) return { ok: false };
-  if (order.status !== OrderStatus.PENDING) {
+  if (order.paymentStatus !== PaymentStatus.PENDING) {
     return { ok: true, orderId: order.id, alreadyPaid: true };
   }
 
   await db.$transaction(async (tx) => {
     await tx.order.update({
       where: { id: order.id },
-      data: { status: OrderStatus.PAID, paidAt: new Date() },
+      data: { paymentStatus: PaymentStatus.PAID, paidAt: new Date() },
     });
 
     for (const item of order.items) {
@@ -185,7 +192,87 @@ export async function markOrderPaid(
     }
   });
 
+  await recordEvent(
+    order.id,
+    OrderEventType.PAYMENT_SUCCEEDED,
+    "Payment received; stock reserved",
+  );
+
   return { ok: true, orderId: order.id };
+}
+
+/** Appends to an order's timeline. Never throws — a lost log line must not
+ *  fail the operation it was describing. */
+export async function recordEvent(
+  orderId: string,
+  type: OrderEventType,
+  message: string,
+  actorUserId?: string,
+): Promise<void> {
+  await db.orderEvent
+    .create({ data: { orderId, type, message, actorUserId: actorUserId ?? null } })
+    .catch((error) => console.error("[orders] could not record event:", error));
+}
+
+export type FulfilmentUpdate = {
+  fulfilmentStatus?: FulfilmentStatus;
+  carrier?: string | null;
+  trackingNumber?: string | null;
+  trackingUrl?: string | null;
+  internalNotes?: string | null;
+};
+
+/**
+ * Applies a fulfilment change from the admin, stamping the matching timestamp
+ * and writing the timeline entry.
+ *
+ * Returns whether the customer should be told — the caller sends the email, so
+ * this stays usable from a script or a test without sending mail as a side
+ * effect.
+ */
+export async function updateFulfilment(
+  orderId: string,
+  update: FulfilmentUpdate,
+  actorUserId?: string,
+): Promise<{ ok: boolean; notifyCustomer: boolean }> {
+  const existing = await db.order.findUnique({
+    where: { id: orderId },
+    select: { fulfilmentStatus: true, number: true },
+  });
+  if (!existing) return { ok: false, notifyCustomer: false };
+
+  const next = update.fulfilmentStatus;
+  const changed = !!next && next !== existing.fulfilmentStatus;
+
+  await db.order.update({
+    where: { id: orderId },
+    data: {
+      ...update,
+      ...(next === FulfilmentStatus.SHIPPED ? { shippedAt: new Date() } : {}),
+      ...(next === FulfilmentStatus.DELIVERED ? { deliveredAt: new Date() } : {}),
+    },
+  });
+
+  if (changed) {
+    await recordEvent(
+      orderId,
+      next === FulfilmentStatus.SHIPPED
+        ? OrderEventType.SHIPPED
+        : next === FulfilmentStatus.DELIVERED
+          ? OrderEventType.DELIVERED
+          : OrderEventType.STATUS_CHANGED,
+      `Fulfilment: ${existing.fulfilmentStatus} → ${next}`,
+      actorUserId,
+    );
+  }
+
+  // Only these two are worth an email. Nobody wants a message saying their
+  // order moved from UNFULFILLED to READY_TO_SHIP.
+  const notifyCustomer =
+    changed &&
+    (next === FulfilmentStatus.SHIPPED || next === FulfilmentStatus.IN_PRODUCTION);
+
+  return { ok: true, notifyCustomer };
 }
 
 export async function attachPaymentIntent(
@@ -217,6 +304,7 @@ export async function clearCartForOrder(orderId: string): Promise<void> {
 
 const orderInclude = {
   items: { include: { personalisation: true } },
+  events: { orderBy: { createdAt: "desc" } },
 } satisfies Prisma.OrderInclude;
 
 export type FullOrder = Prisma.OrderGetPayload<{ include: typeof orderInclude }>;
@@ -236,7 +324,7 @@ export async function getOrderByPaymentIntent(
 
 export async function getOrdersForUser(userId: string): Promise<FullOrder[]> {
   return db.order.findMany({
-    where: { userId, status: { not: OrderStatus.PENDING } },
+    where: { userId, paymentStatus: { not: PaymentStatus.PENDING } },
     orderBy: { createdAt: "desc" },
     include: orderInclude,
   });
