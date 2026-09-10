@@ -294,9 +294,61 @@ saying their order moved to `READY_TO_SHIP`.
 - [ ] Image storage  `[?]` local disk vs. S3/R2/Cloudinary
 - [ ] Category management
 - [ ] Blog post editor (rich text or markdown)
-- [ ] Order management: list, detail, mark fulfilled, tracking numbers
+- [ ] Order management: list, detail, fulfilment status, tracking, refund with
+      a required reason — the data model for all of this already exists
 - [ ] Inventory / low-stock view
 - [ ] Basic sales dashboard
+
+### Shipping configuration
+
+Rates currently live in `src/lib/shipping.ts` as constants, which means every
+price change is a code edit and a deploy. They belong in the database, editable
+from the admin, so MaBrown can react to a Canada Post increase herself.
+
+Build it in this order — each step is useful on its own, and stopping after
+step 1 or 2 would still be a working shop:
+
+**1. Editable flat rates** (start here)
+
+- [ ] Move zones, methods and rates into the database
+- [ ] Admin screen: per zone, per method, set a price
+- [ ] Enable/disable a destination zone, so opening the US is a toggle
+- [ ] Configurable free-shipping threshold, and which zones it applies to
+- [ ] Enable/disable individual methods (drop Express if it is never chosen)
+
+**2. Weight-based bands**
+
+- [ ] Add `weightGrams` and packed dimensions to `ProductVariant`, and a
+      shop-wide origin postal code — nothing accurate is possible without these
+- [ ] Rate table by weight band per zone, e.g. 0–500g, 500g–1kg, 1–2kg
+- [ ] Per-product packaging allowance, so the box and padding are counted
+- [ ] Show the computed parcel weight in the admin when reviewing an order
+
+**3. Carrier-calculated rates**
+
+- [ ] A provider interface so couriers are pluggable rather than hardcoded —
+      Canada Post today, another tomorrow, without touching checkout
+- [ ] Canada Post Ship & Track API (rating endpoint)
+- [ ] Optionally an aggregator: Stallion Express, Chit Chats, EasyPost, Shippo.
+      For small Canadian parcels these are often materially cheaper than retail
+      Canada Post, which may matter more than rate precision
+- [ ] Admin: choose which provider is live, per zone
+- [ ] **Fallback to flat rates when the carrier API is slow or down.** Checkout
+      must never fail because a courier's API is having a bad day — the cost of
+      being a little wrong is far lower than the cost of not selling
+- [ ] Cache quotes briefly, so a customer changing address does not fire a
+      request per keystroke
+- [ ] Carrier credentials in environment variables, not the database
+
+**Notes worth keeping in mind**
+
+- Rates are per *parcel*, not per item — a second mug costs far less to add
+  than the first did. Any weight model needs to combine a cart into parcels,
+  and splitting large orders across boxes is its own problem.
+- Live quotes need a complete destination address, which the current checkout
+  only has at the end. Either quote late, or ask for the postal code earlier.
+- Whatever the source, **keep charging predictable**. A rate that jumps around
+  between page loads reads as broken even when it is correct.
 
 ## Phase 8 — Production readiness
 
