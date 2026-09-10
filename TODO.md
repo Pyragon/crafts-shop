@@ -153,17 +153,27 @@ Still to add in Phase 7's admin UI:
 - [ ] Firewall port 443 to Cloudflare's ranges, so forwarded IP headers can't
       be forged by hitting the origin directly
 
-## Phase 4 — Checkout & orders
+## Phase 4 — Checkout & orders  ✅ COMPLETE
 
-- [ ] Checkout flow: contact → shipping address → delivery → payment → review
-- [ ] Guest checkout (no forced account)
-- [ ] Shipping options & rates
-- [ ] Payments  `[?]` **Stripe** recommended — needs Cody's account + keys
-- [ ] Order + OrderItem models, order number generation
-- [ ] Stock decrement on successful payment (transactional)
-- [ ] Order confirmation page
-- [ ] Order confirmation email
-- [ ] Webhook handling for async payment events
+- [x] Checkout: contact → address → delivery → payment, embedded Payment Element
+- [x] Guest checkout — no account required
+- [x] Flat shipping options; standard free over $75
+- [x] Payments via **Stripe** (sandbox keys in place, verified end to end)
+- [x] Order/OrderItem models, human order numbers (MB-2026-0001)
+- [x] Stock decrement in a transaction, guarded so it cannot go negative
+- [x] Order confirmation page
+- [x] Order confirmation email via Resend
+- [x] Webhook with signature verification, idempotent, exempt from the gate
+
+### Still to do on orders
+
+- [ ] `/account/orders/[id]` detail page (list view exists)
+- [ ] **Sales tax.** Not calculated, and the checkout says so. Canadian tax is
+      destination-based with per-province rates and registration thresholds;
+      guessing one rate would be worse than charging none. Stripe Tax is the
+      likely answer. **Must be resolved before launch.**
+- [ ] Refunds from the admin (the webhook already handles `charge.refunded`)
+- [ ] Switch to live Stripe keys, and re-point the webhook at the live endpoint
 
 ## Phase 5 — Blog / journal
 
@@ -266,6 +276,12 @@ each one is the kind of thing that is invisible until it costs money.
 
 - [ ] Privacy policy, terms, returns/refunds, shipping policy.
 - [ ] Cookie/consent banner if required.
+
+### Payments
+
+- [ ] Swap Stripe sandbox keys for live keys, and create a live-mode webhook
+      endpoint — the signing secret differs between sandbox and live.
+- [ ] Resolve sales tax before taking real money.
 
 ### The switch itself
 

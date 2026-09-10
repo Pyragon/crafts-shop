@@ -403,6 +403,14 @@ model Order {
 
   shippingMethod String?
 
+  /// Which cart this came from, so the webhook can empty it.
+  ///
+  /// The Stripe webhook is a server-to-server request with no cookies, so it
+  /// cannot find the cart the way a browser request would. Reading the cookie
+  /// there silently did nothing, leaving customers with a full cart after
+  /// paying. Recording it here is the only reliable link.
+  cartId String?
+
   stripePaymentIntentId String?   @unique
   paidAt                DateTime?
   fulfilledAt           DateTime?

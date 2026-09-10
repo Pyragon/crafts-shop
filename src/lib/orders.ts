@@ -79,6 +79,11 @@ export async function createPendingOrder(
   userId: string | null,
 ): Promise<CreateOrderResult> {
   const cart = await getCart();
+  // Captured here, while a cookie still exists. The webhook has none.
+  const cartToken = await getCartToken();
+  const cartRow = cartToken
+    ? await db.cart.findUnique({ where: { token: cartToken }, select: { id: true } })
+    : null;
   if (cart.lines.length === 0) {
     return { ok: false, error: "Your cart is empty." };
   }
@@ -118,6 +123,7 @@ export async function createPendingOrder(
       shipCountry: details.country.trim().toUpperCase(),
       shipPhone: details.phone?.trim() || null,
       shippingMethod: details.shippingMethod,
+      cartId: cartRow?.id ?? null,
       items: {
         create: cart.lines.map((line) => ({
           variantId: line.variantId,
@@ -192,17 +198,21 @@ export async function attachPaymentIntent(
   });
 }
 
-/** Empties the cart tied to the current cookie, after a successful order. */
-export async function clearCurrentCart(): Promise<void> {
-  const token = await getCartToken();
-  if (!token) return;
-  const cart = await db.cart.findUnique({
-    where: { token },
-    select: { id: true },
+/**
+ * Empties the cart an order came from.
+ *
+ * Takes the id rather than reading the cookie, because this runs in the Stripe
+ * webhook — a server-to-server request with no cookies at all. Reading the
+ * cookie there silently did nothing, leaving customers with a full cart after
+ * paying.
+ */
+export async function clearCartForOrder(orderId: string): Promise<void> {
+  const order = await db.order.findUnique({
+    where: { id: orderId },
+    select: { cartId: true },
   });
-  if (cart) {
-    await db.cartItem.deleteMany({ where: { cartId: cart.id } });
-  }
+  if (!order?.cartId) return;
+  await db.cartItem.deleteMany({ where: { cartId: order.cartId } });
 }
 
 const orderInclude = {

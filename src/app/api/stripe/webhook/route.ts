@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { stripe, stripeConfigured } from "@/lib/stripe";
 import {
-  clearCurrentCart,
+  clearCartForOrder,
   getOrderByPaymentIntent,
   markOrderPaid,
 } from "@/lib/orders";
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
           const order = await getOrderByPaymentIntent(intent.id);
           if (order) {
             await sendOrderConfirmation(order);
-            await clearCurrentCart().catch(() => {});
+            await clearCartForOrder(result.orderId).catch(() => {});
           }
         }
         break;
