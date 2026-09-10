@@ -71,7 +71,18 @@ export const SHIPPING_METHODS: ShippingMethod[] = [
   },
 ];
 
-/** Base rates in cents, by zone and method. */
+/**
+ * Base rates in cents, by zone and method.
+ *
+ * ⚠️ THESE NUMBERS ARE PLACEHOLDERS. They were invented to look plausible.
+ * They are not Canada Post rates, not from any rate table, and not derived
+ * from parcel weights — because no product here records a weight or packed
+ * size, so no real rate can be computed.
+ *
+ * Replace them before taking real money. Charging too little loses money on
+ * every order; charging too much loses the order. Either needs real figures.
+ * See TODO.md for what is needed to work them out.
+ */
 const RATES: Record<ShippingZone, Record<string, number>> = {
   CA: { standard: 800, express: 1800 },
   US: { standard: 1800, express: 3500 },

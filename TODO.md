@@ -171,6 +171,13 @@ Flat rates by destination zone rather than carrier-calculated. For small
 parcels that is predictable, and it avoids an integration whose outage would
 take checkout down.
 
+> ### ⚠️ The rates below are invented placeholders
+>
+> They are not Canada Post rates and not derived from anything. No product
+> records a weight or packed size, so no real rate can currently be computed.
+> **They must be replaced before taking real money** — undercharging loses
+> money on every order, overcharging loses the order.
+
 | Zone | Standard | Express |
 |---|---|---|
 | Canada | $8.00, free over $75 | $18.00 |
@@ -187,10 +194,31 @@ threshold would subsidise the expensive option, and abroad the postage is too
 large to give away. Unknown countries fall to the international zone, never
 domestic, so a mistake never underprices.
 
+- [ ] **Replace the placeholder rates with real figures.** Needs from MaBrown:
+      - the origin postal code she posts from
+      - typical packed weight and box size per product type (a mug is not a
+        tea towel), which also means adding `weightGrams` and packed dimensions
+        to `ProductVariant`
+      - whether she has a Canada Post business account, or uses a reseller
+        like Stallion Express or Chit Chats — the discounts are substantial
+- [ ] Decide how rates are produced (see options below)
 - [ ] Enable US and international zones when MaBrown is ready to post abroad
-- [ ] Revisit carrier-calculated rates (Canada Post API, EasyPost, Shippo) if
-      international becomes a real share of orders — `rateFor` is the only
-      thing that would need swapping
+**Options for real rates, cheapest effort first:**
+
+1. **Measure actual parcels and set flat bands.** Weigh and box a few typical
+   orders, look up what Canada Post charges, add a margin. No integration, no
+   dependency, no outage risk. What most small shops do, and probably right
+   here. Needs revisiting when Canada Post raises rates, usually each January.
+2. **Canada Post's published rate tables**, encoded as weight/zone bands. More
+   accurate, still no runtime dependency, same annual maintenance.
+3. **Canada Post Ship & Track API** for live rates. Accurate, and needs weight
+   and dimensions per item plus a business account — and checkout then depends
+   on their API being up, so it needs a fallback.
+4. **An aggregator** (Stallion Express, Chit Chats, EasyPost, Shippo). Often
+   materially cheaper than retail Canada Post for small parcels, which for a
+   shop this size may matter more than rate accuracy.
+
+`shippingCostCents` is the single place any of these would plug into.
 - [ ] Customs/CN22 declarations will be needed before shipping internationally
 
 ### Order management data model
@@ -345,6 +373,8 @@ each one is the kind of thing that is invisible until it costs money.
 - [ ] Swap Stripe sandbox keys for live keys, and create a live-mode webhook
       endpoint — the signing secret differs between sandbox and live.
 - [ ] Resolve sales tax before taking real money.
+- [ ] **Replace the placeholder shipping rates.** They are invented numbers,
+      not Canada Post rates. Every order at launch would be mispriced.
 
 ### The switch itself
 
